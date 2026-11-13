@@ -101,9 +101,9 @@
           <button type="button" class="back-btn" id="thread-back">‹ All messages</button>
           <h3 class="thread-title" id="thread-title"></h3>
           <aside class="research-card" id="research-card" hidden aria-label="Organisation profile from agent research">
-            <p class="research-kind">Agent research · org profile</p>
+            <p class="research-kind" id="research-kind">Agent research · org profile</p>
             <p class="research-text" id="research-text"></p>
-            <p class="research-note">Staged profile — in the live product, this card is filled by a web-research lookup.</p>
+            <p class="research-note" id="research-note">Staged profile — in the live product, this card is filled by a web-research lookup.</p>
           </aside>
           <div class="bubble-stream" id="bubble-stream"></div>
           <form class="composer" id="composer-form">
@@ -267,7 +267,8 @@
       <h3 id="profile-heading">Make Reach yours</h3>
       <p class="hint"><strong>Private on this phone.</strong> No account, no server —
         your profile, your people and your history live in this browser's local
-        storage and never leave the device in this build.</p>
+        storage and never leave the device. The one exception is a sponsor key
+        you connect below — and then Reach calls only that provider, directly.</p>
       <form id="profile-form">
         <label for="profile-name">Your name</label>
         <input id="profile-name" type="text" autocomplete="name">
@@ -304,6 +305,77 @@
       </div>
     </section>
 
+    <section class="integrations" aria-labelledby="integrations-heading">
+      <h3 id="integrations-heading">Connect the sponsor stack</h3>
+      <p class="hint">Reach is built on today's stack — <strong>Tavily</strong> for
+        live research, <strong>ElevenLabs</strong> for the voice,
+        <strong>LangSmith</strong> for the audit trail. Bring your own keys:
+        <strong>keys stay on this phone.</strong> Reach calls each provider
+        directly from this browser — nothing routes through us, no key ever
+        leaves the device except to its own provider, and with no keys
+        connected Reach works exactly as it did before this panel existed.</p>
+
+      <div class="integration-row">
+        <div class="integration-head">
+          <h4>Tavily — live research</h4>
+          <span class="integration-status" id="status-tavily">Not connected</span>
+        </div>
+        <p class="hint">Connected, the reply flow's research step searches the
+          live web and the card is labelled <strong>Live · Tavily</strong>, with
+          the source shown. Not connected — or if a call fails — it uses the
+          staged profile, labelled as staged. Never anything in between.
+          Free tier: 1,000 credits a month; a basic search costs 1.</p>
+        <label for="key-tavily">Tavily API key</label>
+        <input id="key-tavily" type="password" autocomplete="off" placeholder="tvly-…">
+        <div class="integration-actions">
+          <button type="button" class="mini-btn" id="connect-tavily">Connect &amp; test</button>
+          <button type="button" class="mini-btn" id="disconnect-tavily">Disconnect</button>
+        </div>
+        <p class="integration-msg" id="msg-tavily" role="status"></p>
+      </div>
+
+      <div class="integration-row">
+        <div class="integration-head">
+          <h4>ElevenLabs — the voice</h4>
+          <span class="integration-status" id="status-eleven">Not connected</span>
+        </div>
+        <p class="hint">Connected, Listen mode and read-aloud speak in a real
+          ElevenLabs voice instead of the browser's. Any failure falls back to
+          the browser voice instantly — nothing ever goes unsaid. Free tier:
+          10,000 credits a month.</p>
+        <label for="key-eleven">ElevenLabs API key</label>
+        <input id="key-eleven" type="password" autocomplete="off" placeholder="sk-…">
+        <label for="key-eleven-voice">Voice ID</label>
+        <input id="key-eleven-voice" type="text" autocomplete="off" placeholder="21m00Tcm4TlvDq8ikWAM — Rachel, the warm default">
+        <div class="integration-actions">
+          <button type="button" class="mini-btn" id="connect-eleven">Connect &amp; test</button>
+          <button type="button" class="mini-btn" id="disconnect-eleven">Disconnect</button>
+        </div>
+        <p class="integration-msg" id="msg-eleven" role="status"></p>
+      </div>
+
+      <div class="integration-row">
+        <div class="integration-head">
+          <h4>LangSmith — the audit trail</h4>
+          <span class="integration-status" id="status-langsmith">Tracing: off</span>
+        </div>
+        <p class="hint">Connected, every agent action — draft created, approval
+          granted, cap refusal, suppression refusal, send staged — is traced
+          to your LangSmith project, fire-and-forget: a failed trace never
+          blocks or delays Reach. Metadata only; message text and contact
+          details are never traced. Free tier: 5,000 traces a month.</p>
+        <label for="key-langsmith">LangSmith API key</label>
+        <input id="key-langsmith" type="password" autocomplete="off" placeholder="lsv2-…">
+        <label for="key-langsmith-project">Project name</label>
+        <input id="key-langsmith-project" type="text" autocomplete="off" placeholder="reach">
+        <div class="integration-actions">
+          <button type="button" class="mini-btn" id="connect-langsmith">Connect &amp; test</button>
+          <button type="button" class="mini-btn" id="disconnect-langsmith">Disconnect</button>
+        </div>
+        <p class="integration-msg" id="msg-langsmith" role="status"></p>
+      </div>
+    </section>
+
     <div class="nudge-offer" id="nudge-offer" hidden></div>
 
     <h3 class="log-heading">What Reach is doing</h3>
@@ -316,7 +388,12 @@
     fictional, and nothing here sends anywhere real. Anything <em>you</em> add — profile,
     people, saved drafts — is stored only in this browser, on this device; export or
     erase it any time from “Make Reach yours”. Copy and Share on a draft move text
-    <em>you</em> choose into your own apps; Reach itself sends nothing. The web demo reads
+    <em>you</em> choose into your own apps; Reach itself sends nothing. If you connect
+    a sponsor-stack key, Reach calls that one provider directly from this browser —
+    research queries to Tavily, the words being read aloud to ElevenLabs, action
+    metadata (never message text) to LangSmith — and the panel says exactly that
+    before you paste anything. With no keys connected, nothing leaves the device
+    at all. The web demo reads
     and drives its own staged apps; reading <em>other</em> apps needs the Android accessibility
     layer on the roadmap, and iOS gets an approval console instead — the design
     document in the repository says exactly where each claim stops.</p>
@@ -327,6 +404,7 @@
 </footer>
 
 <script src="app.js"></script>
+<script src="integrations.js"></script>
 <script>
 /* Progressive enhancement only: the app is complete without this.
    The service worker caches the app shell (same-origin) so Reach

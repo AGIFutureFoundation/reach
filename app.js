@@ -87,6 +87,17 @@ let approvalSeq = 0;
 const LS_KEY = "reach.v2";
 const LS_VERSION = 3;
 
+/* Sponsor-stack connections (v2.2): the user's own API keys for
+   Tavily, ElevenLabs and LangSmith, stored in this same on-device
+   store under `integrations` — additive field, no schema bump, so
+   v2/v3 stores migrate forward untouched. Keys are sent only to
+   their own provider's API, are never exported, and are erased with
+   everything else by the Erase control. Empty = not connected, and
+   Reach behaves exactly as it did before the stack existed. */
+const DEFAULT_INTEGRATIONS = {
+  tavilyKey: "", elevenKey: "", elevenVoice: "", langsmithKey: "", langsmithProject: "reach"
+};
+
 const DEFAULT_PROFILE = {
   name: "", role: "", tone: "Warm", signoff: "", intention: "Keep in touch with people who matter",
   textSize: "100"
@@ -102,7 +113,7 @@ function dateKey(d) {
 function freshDay() { return { date: dateKey(), touches: 0, kinds: [], mailbox: 0, cold: 0 }; }
 
 function loadStore() {
-  const blank = { version: LS_VERSION, profile: { ...DEFAULT_PROFILE }, people: [], saved: [], day: freshDay(), nudges: [], history: [] };
+  const blank = { version: LS_VERSION, profile: { ...DEFAULT_PROFILE }, people: [], saved: [], day: freshDay(), nudges: [], history: [], integrations: { ...DEFAULT_INTEGRATIONS } };
   try {
     const raw = window.localStorage.getItem(LS_KEY);
     if (!raw) return blank;
@@ -117,7 +128,8 @@ function loadStore() {
       saved: Array.isArray(parsed.saved) ? parsed.saved : [],
       day: parsed.day && parsed.day.date === dateKey() ? { ...freshDay(), ...parsed.day, date: dateKey() } : freshDay(),
       nudges: Array.isArray(parsed.nudges) ? parsed.nudges : [],
-      history: Array.isArray(parsed.history) ? parsed.history : []
+      history: Array.isArray(parsed.history) ? parsed.history : [],
+      integrations: { ...DEFAULT_INTEGRATIONS, ...(parsed.integrations || {}) }
     };
     return out;
   } catch (_) {
@@ -198,6 +210,20 @@ function provenanceOf(q) {
   if (!q) return "";
   if (q.user) return q.imported ? "Source: imported by you · context on record" : "Source: added by you · context on record";
   return "Seed demo data";
+}
+
+/* Sponsor-stack tracing (LangSmith): every consequential action —
+   a draft, an approval, a refusal — can be put on the record.
+   integrations.js supplies the transport when the user connects a
+   key; without one this is a no-op. Fire-and-forget by design:
+   tracing is a witness, never a gate, and it carries metadata only
+   (event, kind, first name already on screen, counters) — never
+   message text, never contact details. */
+function traceEvent(event, meta) {
+  try {
+    const ig = window.ReachIntegrations;
+    if (ig && ig.trace) ig.trace(event, meta || {});
+  } catch (_) { /* the audit trail must never break the product */ }
 }
 
 function firstName(full) { return (full || "").trim().split(/\s+/)[0] || "there"; }
@@ -341,18 +367,37 @@ const speakToggle = $("#speak-toggle");
 let forceSpeak = false; /* reserved: series speech is handled by speakSeries */
 let narrateSilent = false; /* Listen mode logs lines without speaking each one */
 
-function speak(text, force) {
+function speakBrowser(text) {
   if (!("speechSynthesis" in window)) return;
-  if (!force && !forceSpeak && !speakToggle.checked) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 1.03;
   window.speechSynthesis.speak(u);
 }
 
+function speak(text, force) {
+  if (!force && !forceSpeak && !speakToggle.checked) return;
+  /* Sponsor stack: when the user has connected ElevenLabs, that is
+     the voice. Any failure falls back to the browser voice, so the
+     line is always spoken by something. */
+  const ig = window.ReachIntegrations;
+  if (ig && ig.elevenConnected()) {
+    ig.speakEleven(text).then(ok => { if (!ok) speakBrowser(text); });
+    return;
+  }
+  speakBrowser(text);
+}
+
 /* Speak a whole series (Listen mode): cancel once, then let the
-   utterances queue so the day reads aloud in order. */
+   utterances queue so the day reads aloud in order. With ElevenLabs
+   connected, the series plays in that voice instead, line by line,
+   with the browser voice as the per-line fallback. */
 function speakSeries(lines) {
+  const ig = window.ReachIntegrations;
+  if (ig && ig.elevenConnected()) {
+    ig.speakSeriesEleven(lines);
+    return true;
+  }
   if (!("speechSynthesis" in window)) return false;
   window.speechSynthesis.cancel();
   lines.forEach(text => {
@@ -678,6 +723,7 @@ function addApproval(kind, refId, toName, org, text, move, prov) {
   const a = { id: "a" + (++approvalSeq), kind, refId, toName, org, text, move: move || "", prov: prov || "" };
   state.approvals.push(a);
   renderApprovals();
+  traceEvent("draft_created", { kind: a.kind, to: firstName(a.toName), move: a.move || "" });
   return a;
 }
 
@@ -813,6 +859,7 @@ async function approveApproval(id) {
   const before = sendCounts();
   if (before.mailbox >= MAILBOX_CAP) {
     narrate(`Today's mailbox cap is reached — ${before.mailbox} of ${MAILBOX_CAP} sends used. The real programme stops the wave here rather than risk the mailbox, so this draft stays in Approvals; the counters reset tomorrow.`, "log-refusal");
+    traceEvent("cap_refusal", { to: firstName(a.toName), mailbox: before.mailbox, cap: MAILBOX_CAP });
     return;
   }
   const ta = $("#draft-" + id);
@@ -850,6 +897,9 @@ async function approveApproval(id) {
     narrate(`Sent to ${a.toName}. That's send number ${state.sentCount} this session — ${c.mailbox} of ${MAILBOX_CAP} sends used today, ${c.cold} of ${COLD_CAP} cold. Reach keeps the programme's pace instead of blasting the whole queue at once.`, "log-done");
     offerNudge({ personId: a.refId, name: a.toName, org: a.org, fit: (q && q.fit) || "" });
   }
+  const after = sendCounts();
+  traceEvent("approval_granted", { kind: a.kind, to: firstName(a.toName) });
+  traceEvent("send_staged", { kind: a.kind, to: firstName(a.toName), mailbox: after.mailbox, cold: after.cold });
   focusAfterDecision();
 }
 
@@ -914,11 +964,33 @@ async function flowReply() {
     await wait(500);
     narrate(`Reading the latest message from ${t.name}: “${last.text}”`);
     if (t.profile) {
-      narrate(`Before drafting, I'll look up ${t.org}. In the live product this step is a web-research lookup (Tavily-style); in this demo it reads a staged profile — the card says so on its face.`);
       const card = $("#research-card");
-      $("#research-text").textContent = t.profile;
-      card.hidden = false;
-      await agentTouch(card, `Research found: ${t.profile}`);
+      const ig = window.ReachIntegrations;
+      let live = null;
+      if (ig && ig.tavilyConnected()) {
+        narrate(`Before drafting, I'll look up ${t.org} — Tavily is connected in the sponsor stack, so this research step runs live.`);
+        live = await ig.tavilySearch(`${t.org} — ${t.name}`);
+      }
+      if (live) {
+        $("#research-kind").textContent = "Live research · Tavily";
+        $("#research-text").textContent = `${live.title} — ${live.content}`;
+        $("#research-note").textContent = `Live · Tavily — fetched just now. Source: ${live.url}`;
+        card.hidden = false;
+        traceEvent("research_live", { org: t.org, source: live.url });
+        await agentTouch(card, `Live research via Tavily: “${live.title}” (${live.url}). The card is labelled Live · Tavily, so you always know which kind of research you're seeing.`);
+      } else {
+        if (ig && ig.tavilyConnected()) {
+          narrate("The live Tavily lookup didn't come back, so I'm falling back to the staged profile for this thread — labelled as staged, never passed off as live.", "log-refusal");
+          traceEvent("research_fallback", { org: t.org });
+        } else {
+          narrate(`Before drafting, I'll look up ${t.org}. In the live product this step is a web-research lookup (Tavily-style); in this demo it reads a staged profile — the card says so on its face. Connect Tavily in the sponsor stack below and this step runs live.`);
+        }
+        $("#research-kind").textContent = "Agent research · org profile";
+        $("#research-text").textContent = t.profile;
+        $("#research-note").textContent = "Staged profile — in the live product, this card is filled by a web-research lookup.";
+        card.hidden = false;
+        await agentTouch(card, `Research found: ${t.profile}`);
+      }
     }
     narrate("Drafting a reply that answers it…");
     await wait(900);
@@ -943,6 +1015,7 @@ async function flowQueue() {
       if (q.suppressed) {
         await agentTouch(card, "");
         narrate(`Skipping ${q.name} at ${q.org}. They asked not to be contacted again, so they're on the do-not-contact list — I won't draft anything for them, ever.`, "log-refusal");
+        traceEvent("suppression_refusal", { to: firstName(q.name) });
         continue;
       }
       if (q.status === "sent") { narrate(`${q.name} — already sent this session.`); continue; }
@@ -1004,6 +1077,7 @@ async function flowDraftOne(id) {
   if (q.suppressed) {
     switchView("queue");
     narrate(`${q.name} is on the do-not-contact list — ${q.suppressReason} I won't draft anything for them, ever.`, "log-refusal");
+    traceEvent("suppression_refusal", { to: firstName(q.name) });
     return;
   }
   if (state.approvals.some(a => a.refId === q.id && a.kind !== "reply")) {
@@ -1427,7 +1501,8 @@ $("#profile-form").addEventListener("submit", e => {
 
 $("#export-btn").addEventListener("click", () => {
   const payload = {
-    exportedFrom: "Reach v2.1 (this phone, local data only)",
+    exportedFrom: "Reach v2.2 (this phone, local data only)",
+    sponsorStack: "Connection state is not exported. API keys never leave this phone in an export — they are not in this file.",
     profile: store.profile,
     people: state.queue.filter(q => q.user),
     savedDrafts: state.saved,

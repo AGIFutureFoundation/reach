@@ -447,3 +447,44 @@ tour) plus counters decrementing and persisting, refusal at the cap,
 provenance rendering, import parsing/dedupe/do-not-contact, nudge
 scheduling/surfacing/drafting, and text-size persistence across a
 simulated reload. All pass against the real `app.js`.
+
+## 11 · v2.2 — the sponsor stack: real tools, bring-your-own-key
+
+v2.1 made the rails mechanical. v2.2 makes the *integrations* real:
+the three tools the demo was always gesturing at — web research, a
+human-grade voice, an audit trail — now run live, behind one design
+decision that keeps the privacy posture intact: **there is no Reach
+server, so there is nothing to route keys or data through. The user
+brings their own keys; the browser calls the provider directly.**
+
+| Integration | What goes live | The rail it must not break |
+|---|---|---|
+| **Tavily** | The reply flow's research step calls `POST /search` and shows the top result's title + source on the research card, labelled **Live · Tavily**. | Labels never blur: not connected or call failed → the staged profile, labelled as staged, fallback narrated. A live result is never simulated. |
+| **ElevenLabs** | Listen mode and read-aloud speak via `POST /v1/text-to-speech/{voice_id}` (default voice Rachel, user-changeable), audio played inline. | No autoplay surprises — speech starts only from the user's toggles, buttons, flows. Any failed line falls back to the browser voice; nothing goes unsaid. |
+| **LangSmith** | Every consequential action — draft created, approval granted, send staged, cap refusal, suppression refusal, live/fallback research — is posted as a run to the user's project (`reach.*`). | Fire-and-forget: tracing never blocks, delays, or alters the UX. Metadata only — no message text, no contact details beyond first names already on screen. |
+
+**Key discipline.** Keys live in the same namespaced store
+(`store.integrations` — an additive field, so v2/v3 stores migrate
+untouched and the schema stays v3), are sent only to their own
+provider, are excluded from Export, and are removed by Disconnect
+and by Erase. The panel states the terms before anything is pasted:
+“Keys stay on this phone. Reach calls the provider directly —
+nothing routes through us.”
+
+**The CORS honesty.** None of the three vendors' docs state a
+browser-CORS policy (reviewed 2026-11-13; full record in
+`INTEGRATIONS.md`). Rather than promise what the docs don't, every
+adapter is built so a blocked call is a designed path: staged
+profile, browser voice, silent trace. ElevenLabs' own guidance —
+keys are secrets, keep them server-side — is answered head-on by
+the BYOK pattern: in a demo on the user's own device, the key's
+only journey is to ElevenLabs itself.
+
+**Verification.** The v2.1 harness (67 assertions, loads `app.js`
+only) still passes untouched — proof the integrations are pure
+progressive enhancement. The extended harness (89 assertions) loads
+`integrations.js` behind a mock fetch and an Audio stub and covers:
+panel connect + key persistence, live research rendering, narrated
+fallback, voice success + browser fallback, refusal/approval/send
+tracing with a metadata-only assertion, tracing failure invisibility,
+key survival across reload, disconnect, and full erase.

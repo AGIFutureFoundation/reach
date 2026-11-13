@@ -47,6 +47,41 @@ before drafting anything. If a judge wants *their* data in it: **Outreach →
 Import your people** — paste two lines, watch them join the queue, parsed
 on-device, uploaded nowhere.
 
+## Sponsor stack — live (v2.2, new today)
+
+The three sponsor tools are not logos in this build — they are wired
+in, behind a **bring-your-own-key** panel at the bottom of the page
+(“Connect the sponsor stack”), and each one degrades honestly when it
+isn't connected. The 20-second version, live on stage:
+
+1. **Tavily (0:00)** — paste a Tavily key, tap *Connect & test*: the
+   panel reports a real live search result. Then run *Reply to first
+   unread* — the research step now hits the live web, and the card is
+   labelled **Live · Tavily** with its source shown. Disconnect, run
+   it again: the staged profile returns, labelled as staged. The two
+   are never blurred, and a failed live call narrates its fallback.
+2. **ElevenLabs (0:10)** — paste a key, tap *Connect & test*: the
+   test sentence plays in a real ElevenLabs voice. *Listen to my day*
+   now reads in that voice; kill the network and it falls back to the
+   browser voice mid-demo without missing a line.
+3. **LangSmith (0:15)** — paste a key: the panel flips to
+   **“Tracing: on (LangSmith)”** and a `reach.connection_test` run is
+   dispatched. Now work the queue: the do-not-contact refusal, every
+   draft, every approval lands in the project as a run —
+   `reach.suppression_refusal`, `reach.draft_created`,
+   `reach.cap_refusal`. *Every refusal Reach makes is on the record.*
+   Tracing is fire-and-forget metadata only: no message text, no
+   contact details, and a dead network changes nothing on screen.
+
+**The honesty paragraph.** Keys live only in this browser's local
+storage, are sent only to their own provider, and are never exported
+or routed through us. None of the three vendors' docs promise
+browser CORS, so every integration is built to fail gracefully —
+the review, with sources and the exact request shapes, is in
+[INTEGRATIONS.md](INTEGRATIONS.md). And with no keys connected, the
+demo behaves exactly as v2.1 did: the integrations are progressive
+enhancement, not a dependency.
+
 ## Architecture in 10 lines
 
 1. Today: a dependency-free **PWA** — one static page, no server, no build.

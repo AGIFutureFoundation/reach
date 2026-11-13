@@ -89,6 +89,39 @@ browser, on your phone. Nothing sends anywhere real.
   focus returns to a sensible place after every flow completes.
 
 
+## What's new in v2.2 — the sponsor stack, live
+
+Reach now plugs into the stack it was demoed on — **Tavily,
+ElevenLabs, and LangSmith** — behind one bring-your-own-key panel,
+“Connect the sponsor stack”, at the bottom of the page. Keys stay on
+this phone, in the same on-device store as everything else; Reach
+calls each provider directly from the browser, nothing routes
+through a server of ours, and keys are never exported. Full review —
+endpoints, auth, free tiers, and what the docs don't settle — in
+[INTEGRATIONS.md](INTEGRATIONS.md).
+
+- **Tavily — live research.** Connected, the reply flow's research
+  step searches the live web and shows the top result's title and
+  source on the card, labelled **Live · Tavily**. Not connected, or
+  on any failure, the staged profile runs — labelled as staged, with
+  the fallback narrated. A live result is never faked.
+- **ElevenLabs — the voice.** Connected, Listen mode and read-aloud
+  speak in a real ElevenLabs voice (Rachel by default; the Voice ID
+  field takes any voice on your account). Any failed line falls back
+  to the browser voice instantly, so nothing ever goes unsaid.
+- **LangSmith — the audit trail.** Connected, every agent action —
+  draft created, approval granted, send staged, cap refusal,
+  *suppression refusal* — is traced to your project,
+  fire-and-forget: a failed trace never blocks or delays the UX.
+  Metadata only; message text and contact details are never traced.
+  Every refusal Reach makes is on the record.
+- **Progressive enhancement, provably.** With no keys connected the
+  app is behaviour-identical to v2.1 — the original 67-assertion
+  smoke harness, which never loads `integrations.js`, passes
+  untouched, and the extended harness (89 assertions) covers the
+  adapters: live + fallback research, voice success + fallback,
+  tracing of refusals, key persistence, disconnect, and erase.
+
 ## Why people come back
 
 A CRM is a place you visit when you must. Reach is built as a daily
@@ -159,7 +192,7 @@ mapping — is in [DESIGN.md](DESIGN.md).
 Static site, no build step, no dependencies:
 
 ```text
-index.html · app.js · style.css · manifest.webmanifest · icon.svg · sw.js
+index.html · app.js · integrations.js · style.css · manifest.webmanifest · icon.svg · sw.js
 ```
 
 Judging? Start with [JUDGING.md](JUDGING.md) — the 30-second pitch, the

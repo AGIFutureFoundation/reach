@@ -140,7 +140,7 @@ for exactly this. v2.5 turns them into a fleet:
   exists on the Foundation phone; the Fellowship phone has never
   heard of her. Houses never cross because a slot can only hold
   its own people — asserted in the harness, including the negative
-  space (37 fleet assertions).
+  space (38 fleet assertions).
 - **The brief and the proof follow the desk.** On a holding desk,
   the Morning Brief names the desk, its profile, its mission and
   its handoff, and the impact panel counts that desk's own

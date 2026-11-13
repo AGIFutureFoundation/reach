@@ -714,8 +714,8 @@ facts fill the slots and the design is untouched.
 The rails, the schema (still v3; `holdingId` additive), the pack
 behaviour byte-for-byte (pack narrations are unchanged; holding
 narrations are parallel text), the bridge, and the no-keys
-behaviour. The extended harness now runs **209 assertions, all
-green** — the 172 of v2.4 plus 37 covering holding isolation
+behaviour. The extended harness now runs **210 assertions, all
+green** — the 172 of v2.4 plus 38 covering holding isolation
 against the store, direct phone-to-phone hops, per-holding brief
 and impact, pack/holding interplay, reload persistence, and the
 config-slot invariant.

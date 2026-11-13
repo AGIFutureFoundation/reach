@@ -30,6 +30,21 @@ for the fleet design; the phoneuse fork's fleet doc mirrors it.*
   a second phone — decided from the inventory and the load, not
   assumed here.
 
+### Fleet inventory
+
+*Rows land here as the console inventory verifies them. A device
+listed here is a verified fleet device; its holding assignment is
+a separate step and stays PENDING until the full five-device
+inventory is in.*
+
+| # | Device | Phone ID | Paid until | Source | Holding assignment |
+|---|---|---|---|---|---|
+| 1 | Google Pixel 7 Pro (US) | `ACP6BC9P8ZEML2Z1` — [console](https://console.phoneuse.com/devices/ACP6BC9P8ZEML2Z1) | 13 Dec 2026 | VERIFIED — vendor setup email (Abdulla, CEO of PhoneUse), relayed by Mike 2026-11-13 11:49 PT | **PENDING** — waits for the full inventory |
+| 2 | — | — | — | PENDING console inventory | PENDING |
+| 3 | — | — | — | PENDING console inventory | PENDING |
+| 4 | — | — | — | PENDING console inventory | PENDING |
+| 5 | — | — | — | PENDING console inventory | PENDING |
+
 ## The system in one paragraph
 
 The agentic network has three holdings that talk to the world:

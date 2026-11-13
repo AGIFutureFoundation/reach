@@ -111,7 +111,7 @@ request shapes, what the docs do and don't settle — is in
 
 A Node harness executes the real `app.js` + `integrations.js`
 against a DOM stub and asserts behaviour end to end:
-**209 assertions, all green** — the v2 core, the habit layer, the
+**210 assertions, all green** — the v2 core, the habit layer, the
 caps/provenance/import machinery, the sponsor adapters (live +
 fallback paths), the brief/impact/judge-mode/warmth surfaces,
 pack isolation proven against the store, the PhoneUse bridge's

@@ -182,7 +182,7 @@ review is the surface discipline:
 4. **No keys, no change.** With the panel untouched, the app is
    behaviour-identical to v2.1 — the original assertion suites still
    pass untouched inside the extended harness, which at v2.5 runs
-   **209 assertions, all green**: the v2 core, the v2.1 habit layer,
+   **210 assertions, all green**: the v2 core, the v2.1 habit layer,
    the v2.2 adapters, the v2.3 brief / impact / judge-mode /
    warmth-report / captured-snapshot / PhoneUse-detection
    behaviours, the v2.4 use-case packs (isolation of your list

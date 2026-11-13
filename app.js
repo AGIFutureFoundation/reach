@@ -121,7 +121,7 @@ function freshDay() { return { date: dateKey(), touches: 0, kinds: [], mailbox: 
 const DEFAULT_STATS = { suppression: 0, cap: 0 };
 
 function loadStore() {
-  const blank = { version: LS_VERSION, profile: { ...DEFAULT_PROFILE }, people: [], saved: [], day: freshDay(), nudges: [], history: [], integrations: { ...DEFAULT_INTEGRATIONS }, stats: { ...DEFAULT_STATS }, judgeMode: false, packId: "" };
+  const blank = { version: LS_VERSION, profile: { ...DEFAULT_PROFILE }, people: [], saved: [], day: freshDay(), nudges: [], history: [], integrations: { ...DEFAULT_INTEGRATIONS }, stats: { ...DEFAULT_STATS }, judgeMode: false, packId: "", holdingId: "" };
   try {
     const raw = window.localStorage.getItem(LS_KEY);
     if (!raw) return blank;
@@ -140,7 +140,8 @@ function loadStore() {
       integrations: { ...DEFAULT_INTEGRATIONS, ...(parsed.integrations || {}) },
       stats: { ...DEFAULT_STATS, ...((parsed.stats && typeof parsed.stats === "object") ? parsed.stats : {}) },
       judgeMode: !!parsed.judgeMode,
-      packId: typeof parsed.packId === "string" ? parsed.packId : ""
+      packId: typeof parsed.packId === "string" ? parsed.packId : "",
+      holdingId: typeof parsed.holdingId === "string" ? parsed.holdingId : ""
     };
     return out;
   } catch (_) {
@@ -308,11 +309,152 @@ function currentPack() {
   return PACKS.find(p => p.id === store.packId) || null;
 }
 
+/* ---------------- holding mode: the three-phone fleet (v2.5) ----------
+   One phone per holding of the agentic network — the Fellowship
+   phone, the Foundation phone, the BuilderSpace phone — each with
+   its own people slot, its own profile name, its own mission and
+   its own human handoff, under one approval law. A holding is a
+   slot exactly the way a pack is: loading one stashes your real
+   list untouched, its saved drafts are session-only, and the only
+   store traces are `holdingId` (which phone is on stage) and the
+   holding tag on touch-history entries (which phone did the work).
+   Houses never cross: a holding's queue can only ever hold its own
+   people. All starter people are fictional. The full system design
+   is PHONE-FLEET.md. */
+
+const HOLDINGS = [
+  {
+    id: "fellowship", label: "Fellowship", phoneLabel: "Fellowship phone", domain: "agifellowship.church",
+    profileName: "AGI Fellowship — community desk",
+    mission: "Community and city-guide outreach — keep the shelter, food, and gathering partners behind the Fellowship's city guides warm, so the guides stay accurate and the doors stay open to every faith.",
+    handoff: "a Fellowship steward",
+    blurb: "The community phone: shelters, pantries, gathering partners, and the city guides they keep true.",
+    people: [
+      {
+        id: "h-fellowship-1", name: "Miriam Cole", org: "St. Anselm's Shelter — city-guide partner", suppressed: false, move: "thank", holding: "fellowship",
+        fit: "Miriam verified the shelter's winter dinner times and bed count for the Fellowship's city-guide update, and asked for the guide link at the front desk when it publishes.",
+        research: "St. Anselm's Shelter (fictional demo partner) — a 60-bed shelter whose winter programme serves dinner before beds open; it asks community guides to print dinner times ahead of bed counts, because most guests arrive for the meal first.",
+        draft: "Dear Miriam — thank you. The winter dinner times and bed count you verified are in the city guide exactly as you gave them, dinner first, the way your guests actually arrive. The guide link goes to your front desk the morning it publishes. Everyone who finds a warm meal through it found you first. — the AGI Fellowship community desk",
+        status: "waiting"
+      },
+      {
+        id: "h-fellowship-2", name: "Jonas Weber", org: "Harbor Food Pantry — Saturday distribution", suppressed: false, move: "follow-up", holding: "fellowship",
+        fit: "Jonas offered the pantry's Saturday surplus list for the guide's food pages and asked whether the Fellowship could send a volunteer crew on the first Saturday of December.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "h-fellowship-3", name: "Aisha Bello", org: "Interfaith Youth Council — Oakland", suppressed: false, move: "invite", holding: "fellowship",
+        fit: "Aisha runs the council's monthly interfaith dinner and asked the Fellowship to bring a short reading on light in the dark months to the December table.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "h-fellowship-4", name: "Howard Finch", org: "Former greeter — asked for no further contact", suppressed: true, holding: "fellowship",
+        suppressReason: "Asked for no further contact (September 2026). On the Fellowship's do-not-contact list.",
+        fit: "", draft: "", status: "suppressed"
+      }
+    ]
+  },
+  {
+    id: "foundation", label: "Foundation", phoneLabel: "Foundation phone", domain: "agifuturefoundation.org",
+    profileName: "AGI Future Foundation — partnerships desk",
+    mission: "Partner and funder warmth — answer every programme officer's specific ask on time, and keep the Foundation's commitments exact.",
+    handoff: "Russell Vacanti, the Foundation's co-founder",
+    blurb: "The partnerships phone: funders and partners, each with a specific ask on record and a human one reply away.",
+    people: [
+      {
+        id: "h-foundation-1", name: "Clara Whitfield", org: "Whitfield Family Fund — programme officer", suppressed: false, move: "follow-up", holding: "foundation",
+        fit: "Clara asked at the October briefing for a one-page outcomes summary 'once the autumn numbers are final' — they are final, and the page is drafted.",
+        research: "Whitfield Family Fund (fictional demo funder) — a small family fund that asks partners for a one-page outcomes summary after each programme season, and replies within two weeks when the page is specific rather than general.",
+        draft: "Hi Clara — the one-page outcomes summary you asked for at the October briefing is ready, now that the autumn numbers are final. The short version: the programmes held their cohorts and the waitlist grew; the page carries the detail in the format your board uses. Happy to walk it in 15 minutes — and if at any point you'd rather talk to a human than an agent, Russell Vacanti, our co-founder, is one reply away. — AGI, for the AGI Future Foundation partnerships desk",
+        status: "waiting"
+      },
+      {
+        id: "h-foundation-2", name: "Dev Shah", org: "Bay Area Community Partners — sponsor network", suppressed: false, move: "introduce", holding: "foundation",
+        fit: "Dev coordinates fiscal sponsors for three neighbourhood nonprofits and asked whether the Foundation's stewardship model could be introduced to their directors' circle.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "h-foundation-3", name: "Margit Olsen", org: "Northgate Trust — grants administrator", suppressed: false, move: "reply", holding: "foundation",
+        fit: "Margit's office sent the standard compliance questions for new partners; the answers sit in the Foundation's filings pack and need a human-checked reply.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "h-foundation-4", name: "Pete Almeida", org: "Almeida Consulting — asked to be removed", suppressed: true, holding: "foundation",
+        suppressReason: "Asked to be removed from all Foundation lists (October 2026).",
+        fit: "", draft: "", status: "suppressed"
+      }
+    ]
+  },
+  {
+    id: "builderspace", label: "BuilderSpace", phoneLabel: "BuilderSpace phone", domain: "builderspace.tech",
+    profileName: "BuilderSpace — tour desk",
+    mission: "Builder and employer outreach in the tour towns — venues, meetup organisers, and the employers who meet builders at the demo table.",
+    handoff: "Mike, BuilderSpace's organiser",
+    blurb: "The tour phone: organisers, venues, and hiring partners for the towns the tour visits.",
+    people: [
+      {
+        id: "h-builderspace-1", name: "Kofi Mensah", org: "BuildNight SF — meetup organiser", suppressed: false, move: "follow-up", holding: "builderspace",
+        fit: "Kofi offered BuildNight's hall for a BuilderSpace session and asked for the session format in writing before he commits the date.",
+        research: "BuildNight SF (fictional demo meetup) — a monthly builder night drawing 60–90 working engineers; its organiser asks visiting programmes for the session format in one paragraph before offering the hall, and confirms dates within the week.",
+        draft: "Hi Kofi — the session format, in the paragraph you asked for: BuilderSpace sessions are build-alongs, not talks. Builders bring a laptop, ship one small working thing in 90 minutes with coaches circulating, and close with demos — no slides, no pitches, and employers meet builders at the demo table. If that fits BuildNight's hall, I'll hold the date you suggested and send the one-page run sheet. — the BuilderSpace tour desk",
+        status: "waiting"
+      },
+      {
+        id: "h-builderspace-2", name: "Petra Novak", org: "DevTools Weekly — community editor", suppressed: false, move: "introduce", holding: "builderspace",
+        fit: "Petra edits the community calendar and asked to be told when BuilderSpace session dates are final, so the tour lands in the calendar before it fills.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "h-builderspace-3", name: "Diego Fuentes", org: "Workshop employer — hiring partner", suppressed: false, move: "reply", holding: "builderspace",
+        fit: "Diego's team hires junior builders from tour demos and asked how demo-day introductions are handled — consent-first, and the builder chooses.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "h-builderspace-4", name: "Greta Lindholm", org: "Sponsorship contact — asked not to be contacted", suppressed: true, holding: "builderspace",
+        suppressReason: "Asked not to be contacted about sponsorships (November 2026).",
+        fit: "", draft: "", status: "suppressed"
+      }
+    ]
+  }
+];
+
+function currentHolding() {
+  return HOLDINGS.find(h => h.id === store.holdingId) || null;
+}
+
+/* The fleet's PhoneUse configuration. The LOCAL surface is verified
+   from the fork (AGIFutureFoundation/phoneuse): API base, task
+   endpoint, Bearer auth, origins allowlisted to its own web UI.
+   The HOSTED console surface is UNVERIFIED until the console review
+   lands — no console API base is claimed here, and the per-holding
+   device IDs are empty config slots that the review fills in.
+   Nothing in the app hard-codes a console endpoint or device ID. */
+const FLEET_CONFIG = {
+  phoneuse: {
+    localBase: "http://127.0.0.1:8765",
+    localTasksPath: "/api/ai/tasks",
+    consoleBase: "https://console.phoneuse.com",
+    consoleApiBase: "", /* UNVERIFIED — intentionally unset */
+    consoleDevices: { fellowship: "", foundation: "", builderspace: "" } /* filled by the console review */
+  }
+};
+
 /* Your real list, whichever slot is currently on stage. Writes that
    belong to your people (add-person, import, persistPeople) always
-   land here — never in a pack. */
+   land here — never in a pack, never in a holding. */
 function myQueue() {
-  return currentPack() && myQueueStash ? myQueueStash : state.queue;
+  return (currentPack() || currentHolding()) && myQueueStash ? myQueueStash : state.queue;
+}
+
+/* The slot on stage: a pack, a holding, or (null) your own list.
+   Packs and holdings share one swap mechanism — one slot at a
+   time, your list stashed and restored exactly either way. */
+function slotOf() {
+  const p = currentPack();
+  if (p) return { kind: "pack", def: p };
+  const h = currentHolding();
+  if (h) return { kind: "holding", def: h };
+  return null;
 }
 
 function renderPackBar() {
@@ -323,7 +465,7 @@ function renderPackBar() {
   wrap.innerHTML = PACKS.map(p =>
     `<button type="button" class="mini-btn pack-btn${pack && pack.id === p.id ? " pack-on" : ""}" data-pack="${p.id}">${escapeHtml(p.label)}</button>`
   ).join("") +
-    `<button type="button" class="mini-btn pack-btn${!pack ? " pack-on" : ""}" data-pack="">My people</button>`;
+    `<button type="button" class="mini-btn pack-btn${!pack && !currentHolding() ? " pack-on" : ""}" data-pack="">My people</button>`;
   $$("[data-pack]", wrap).forEach(b => b.addEventListener("click", () => setActiveList(b.dataset.pack || "")));
   if (pack) {
     active.hidden = false;
@@ -334,43 +476,79 @@ function renderPackBar() {
   }
 }
 
-/* Swap the visible list. Leaving a pack drops its session state
+/* The holding switcher: three phones, three holdings, one tap each.
+   The active line is the phone's role card in miniature — profile
+   name, mission, human handoff — so whoever picks the phone up
+   knows whose voice it speaks in before a single draft is made. */
+function renderHoldingBar() {
+  const wrap = $("#holding-actions");
+  const active = $("#holding-active");
+  if (!wrap || !active) return;
+  const holding = currentHolding();
+  wrap.innerHTML = HOLDINGS.map(h =>
+    `<button type="button" class="mini-btn pack-btn holding-btn${holding && holding.id === h.id ? " pack-on" : ""}" data-holding="${h.id}">${escapeHtml(h.phoneLabel)}</button>`
+  ).join("") +
+    `<button type="button" class="mini-btn pack-btn holding-btn${!holding && !currentPack() ? " pack-on" : ""}" data-holding="">My people</button>`;
+  $$("[data-holding]", wrap).forEach(b => b.addEventListener("click", () => setActiveHolding(b.dataset.holding || "")));
+  if (holding) {
+    active.hidden = false;
+    active.textContent = `${holding.phoneLabel} — running as ${holding.profileName}. ${holding.blurb} Human handoff: ${holding.handoff}. First up: ${holding.people[0].name} — tap “Draft” on their card and Reach runs the full flow: research → draft → your approval.`;
+  } else {
+    active.hidden = true;
+    active.textContent = "";
+  }
+}
+
+/* Swap the visible list. Leaving a slot drops its session state
    (waiting approvals, saved drafts) with it and restores yours from
-   the stash, exactly as it was left. */
-function setActiveList(id) {
-  const target = PACKS.find(p => p.id === id) || null;
-  const current = currentPack();
+   the stash, exactly as it was left. Packs and holdings are the
+   same mechanism; only the narration differs. */
+function activateSlot(target) {
+  const current = slotOf();
   if (!target && !current) return;
-  if (target && current && target.id === current.id) return;
+  if (target && current && target.kind === current.kind && target.def.id === current.def.id) return;
   if (current) {
     const waitingAside = state.approvals.length;
-    const savedAside = state.saved.filter(s => s.pack).length;
-    state.saved = state.saved.filter(s => !s.pack);
+    const savedAside = state.saved.filter(s => s.pack || s.holding).length;
+    state.saved = state.saved.filter(s => !(s.pack || s.holding));
     persistSaved();
     state.queue = myQueueStash || state.queue;
     state.approvals = myApprovalsStash || [];
     myQueueStash = null;
     myApprovalsStash = null;
     if (waitingAside || savedAside) {
-      narrate(`Setting the ${current.label} pack aside — its ${waitingAside} waiting draft${waitingAside === 1 ? "" : "s"}${savedAside ? ` and ${savedAside} saved draft${savedAside === 1 ? "" : "s"}` : ""} stay with the pack, not with your list.`);
+      const aside = `${waitingAside} waiting draft${waitingAside === 1 ? "" : "s"}${savedAside ? ` and ${savedAside} saved draft${savedAside === 1 ? "" : "s"}` : ""}`;
+      if (current.kind === "pack") {
+        narrate(`Setting the ${current.def.label} pack aside — its ${aside} stay with the pack, not with your list.`);
+      } else {
+        narrate(`Setting the ${current.def.phoneLabel} aside — its ${aside} stay on that phone, not with your list.`);
+      }
     }
   }
-  store.packId = target ? target.id : "";
+  store.packId = target && target.kind === "pack" ? target.def.id : "";
+  store.holdingId = target && target.kind === "holding" ? target.def.id : "";
   persist();
   if (target) {
     myQueueStash = state.queue;
     myApprovalsStash = state.approvals;
-    state.queue = target.people.map(p => ({ ...p }));
+    state.queue = target.def.people.map(p => ({ ...p }));
     state.approvals = [];
     renderPackBar();
+    renderHoldingBar();
     renderQueue();
     populateStudioPeople();
     renderApprovals();
     renderToday();
     switchView("queue");
-    narrate(`Loaded the ${target.label} pack — ${target.people.length} fictional people for this job, fresh every time you load it. Your own list is untouched in its own slot. First up: ${target.people[0].name} — tap “Draft” on their card for the full flow: research → draft → approval.`, "log-done");
+    if (target.kind === "pack") {
+      narrate(`Loaded the ${target.def.label} pack — ${target.def.people.length} fictional people for this job, fresh every time you load it. Your own list is untouched in its own slot. First up: ${target.def.people[0].name} — tap “Draft” on their card for the full flow: research → draft → approval.`, "log-done");
+    } else {
+      const h = target.def;
+      narrate(`Loaded the ${h.phoneLabel} — running as ${h.profileName}. Mission: ${h.mission} Its people live in their own slot and no other holding's queue can appear here; your own list is untouched. Human handoff on this phone: ${h.handoff}. First up: ${h.people[0].name} — tap “Draft” on their card for the full flow: research → draft → approval.`, "log-done");
+    }
   } else {
     renderPackBar();
+    renderHoldingBar();
     renderQueue();
     populateStudioPeople();
     renderApprovals();
@@ -380,9 +558,23 @@ function setActiveList(id) {
   }
 }
 
-/* If a pack was the last list viewed, reopen on it — its people are
-   deterministic, so the slot rebuilds fresh; your list is stashed
-   exactly as init built it. */
+function setActiveList(id) {
+  const target = PACKS.find(p => p.id === id) || null;
+  activateSlot(target ? { kind: "pack", def: target } : null);
+}
+
+function setActiveHolding(id) {
+  const target = HOLDINGS.find(h => h.id === id) || null;
+  activateSlot(target ? { kind: "holding", def: target } : null);
+}
+
+/* If a pack or a holding was the last list viewed, reopen on it —
+   its people are deterministic, so the slot rebuilds fresh; your
+   list is stashed exactly as init built it. The two fields are
+   written together by activateSlot, so at most one is ever set;
+   a stale twin is cleared here rather than honoured. */
+if (store.holdingId && !currentHolding()) store.holdingId = "";
+if (store.packId && store.holdingId) store.holdingId = "";
 if (store.packId) {
   const reopening = currentPack();
   if (reopening) {
@@ -393,6 +585,16 @@ if (store.packId) {
   } else {
     store.packId = "";
   }
+} else if (store.holdingId) {
+  const reopeningH = currentHolding();
+  if (reopeningH) {
+    myQueueStash = state.queue;
+    myApprovalsStash = state.approvals;
+    state.queue = reopeningH.people.map(p => ({ ...p }));
+    state.approvals = [];
+  } else {
+    store.holdingId = "";
+  }
 }
 
 function persistPeople() {
@@ -400,9 +602,9 @@ function persistPeople() {
   persist();
 }
 function persistSaved() {
-  /* Pack saved-drafts are session-only: they render while their
-     pack is loaded and are never written to the store. */
-  store.saved = state.saved.filter(s => !s.pack);
+  /* Pack and holding saved-drafts are session-only: they render
+     while their slot is loaded and are never written to the store. */
+  store.saved = state.saved.filter(s => !s.pack && !s.holding);
   persist();
 }
 
@@ -412,7 +614,7 @@ function recordTouch(kind, name) {
   ensureToday();
   store.day.touches += 1;
   if (!store.day.kinds.includes(kind)) store.day.kinds.push(kind);
-  store.history.push({ date: store.day.date, kind, name: name || "" });
+  store.history.push({ date: store.day.date, kind, name: name || "", holding: store.holdingId || "" });
   if (store.history.length > 200) store.history = store.history.slice(-200);
   persist();
   renderToday();
@@ -450,6 +652,7 @@ function recordSend(cold) {
    where this person came from, on the queue card and the approval. */
 function provenanceOf(q) {
   if (!q) return "";
+  if (q.holding) { const h = HOLDINGS.find(x => x.id === q.holding); return `${h ? h.phoneLabel : "Holding phone"} · fictional starter set`; }
   if (q.pack) return "Use-case pack · fictional demo people";
   if (q.user) return q.imported ? "Source: imported by you · context on record" : "Source: added by you · context on record";
   return "Seed demo data";
@@ -771,7 +974,14 @@ function nextAction() {
    seeded demo stage count, and the panel heading says so. */
 
 function impactStats() {
-  const hist = store.history || [];
+  /* Holding mode (v2.5): while a holding phone is on stage, the
+     panel counts that phone's own touches — history entries carry
+     the holding that made them (additive tag; older entries are
+     untagged and count toward the whole-stage view). On “My
+     people”, the panel counts everything, exactly as before. */
+  const holdingNow = typeof currentHolding === "function" ? currentHolding() : null;
+  const allHist = store.history || [];
+  const hist = holdingNow ? allHist.filter(h => h.holding === holdingNow.id) : allHist;
   const carried = hist.filter(h => h.kind === "copy" || h.kind === "share").length;
   const stats = store.stats || { ...DEFAULT_STATS };
   return {
@@ -784,13 +994,22 @@ function impactStats() {
     refusals: (stats.suppression || 0) + (stats.cap || 0),
     suppressionRefusals: stats.suppression || 0,
     capRefusals: stats.cap || 0,
-    days: new Set(hist.map(h => h.date)).size
+    days: new Set(hist.map(h => h.date)).size,
+    holdingId: holdingNow ? holdingNow.id : ""
   };
 }
 
 function renderImpact() {
   const grid = $("#impact-grid");
   if (!grid) return;
+  const scopeEl = $("#impact-scope");
+  if (scopeEl) {
+    const h = typeof currentHolding === "function" ? currentHolding() : null;
+    scopeEl.hidden = !h;
+    scopeEl.textContent = h
+      ? `Counting the ${h.phoneLabel} only — this holding's own touches, on its own record. Switch back to “My people” for the whole stage's count.`
+      : "";
+  }
   const s = impactStats();
   const tiles = [
     { n: s.touches, label: "Touches completed", sub: "sends, copies and shares you finished" },
@@ -1216,7 +1435,8 @@ function saveApproval(id) {
   a.text = approvalCurrentText(a);
   state.approvals.splice(idx, 1);
   const packNow = currentPack();
-  state.saved.push({ id: a.id, kind: a.kind, refId: a.refId, toName: a.toName, org: a.org, text: a.text, move: a.move || "", prov: a.prov || "", pack: packNow && state.queue.some(q => q.id === a.refId) ? packNow.id : "" });
+  const holdingNow = currentHolding();
+  state.saved.push({ id: a.id, kind: a.kind, refId: a.refId, toName: a.toName, org: a.org, text: a.text, move: a.move || "", prov: a.prov || "", pack: packNow && state.queue.some(q => q.id === a.refId) ? packNow.id : "", holding: holdingNow && state.queue.some(q => q.id === a.refId) ? holdingNow.id : "" });
   if (a.kind !== "reply") {
     const q = state.queue.find(x => x.id === a.refId);
     if (q && q.status === "drafted") { q.status = "saved"; renderQueue(); }
@@ -1452,7 +1672,7 @@ async function flowQueue() {
         continue;
       }
       await agentTouch(card, `Reading the fit note for ${q.name} at ${q.org}: ${q.fit}`);
-      if (q.research) narrate(`Research on record for ${q.org}: ${q.research} — a staged profile note from the pack, labelled as such.`);
+      if (q.research) narrate(`Research on record for ${q.org}: ${q.research} — a staged profile note from ${q.holding ? "the holding starter set" : "the pack"}, labelled as such.`);
       narrate(`Drafting a personalised message for ${q.name}…`);
       await wait(900);
       q.status = "drafted";
@@ -1547,7 +1767,7 @@ async function flowDraftOne(id) {
           narrate("The live Tavily lookup didn't come back, so I'm using the staged research note — labelled as staged, never passed off as live.", "log-refusal");
           traceEvent("research_fallback", { org: q.org });
         }
-        narrate(`Research: ${q.research} — a staged profile note from the pack, labelled as such. Connect Tavily in the sponsor stack and this step runs live.`);
+        narrate(`Research: ${q.research} — a staged profile note from ${q.holding ? "the holding starter set" : "the pack"}, labelled as such. Connect Tavily in the sponsor stack and this step runs live.`);
       }
     }
     narrate(`Drafting a ${MOVE_LABELS[q.move] || "follow-up"} in your ${store.profile.tone || "Warm"} tone…`);
@@ -1615,6 +1835,10 @@ function buildBriefLines() {
   const name = (store.profile.name || "").trim();
   const todayStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   lines.push(name ? `${part}, ${firstName(name)}. It's ${todayStr}. Here's your brief.` : `${part}. It's ${todayStr}. Here's your brief.`);
+  const holdingNow = currentHolding();
+  if (holdingNow) {
+    lines.push(`This is the ${holdingNow.phoneLabel}, running as ${holdingNow.profileName}. Mission: ${holdingNow.mission}`);
+  }
   const due = dueNudges();
   lines.push(due.length
     ? `Follow-ups due: ${due.length} — ${due.map(n => n.name).join("; ")}. One tap each drafts the follow-up from what's on record.`
@@ -1631,7 +1855,12 @@ function buildBriefLines() {
     ? `Sends today: ${counts.mailbox} of ${MAILBOX_CAP} from this mailbox — at the cap, so new sends wait for tomorrow. The cap held.`
     : `Sends today: ${counts.mailbox} of ${MAILBOX_CAP} from this mailbox, ${counts.cold} of ${COLD_CAP} cold. The caps are counters, enforced as state, not advice.`);
   const s = impactStats();
-  lines.push(`Your Reach so far: ${s.touches} touches completed, ${s.refusals} refusals honored, across ${s.days} day${s.days === 1 ? "" : "s"} of showing up.`);
+  lines.push(holdingNow
+    ? `This phone's Reach so far: ${s.touches} touches completed across ${s.days} day${s.days === 1 ? "" : "s"} of showing up — counted on this phone alone.`
+    : `Your Reach so far: ${s.touches} touches completed, ${s.refusals} refusals honored, across ${s.days} day${s.days === 1 ? "" : "s"} of showing up.`);
+  if (holdingNow) {
+    lines.push(`Human handoff on this phone: anything that asks for a person goes to ${holdingNow.handoff} — I flag it, hand the thread over, and step out.`);
+  }
   const na = nextAction();
   lines.push(na ? `Your next best action: ${na.label}. ${na.sub}` : "You're clear — every warm connection is warm. That's the whole brief.");
   return lines;
@@ -1742,6 +1971,25 @@ async function flowTour() {
       await flowQueue();
       setBusy(true);
       narrate(`That refusal was traced ${ls ? "to LangSmith, project “reach” — the no is on the record, metadata only" : "in the log above — connect LangSmith and the same refusal lands on the record as a reach.suppression_refusal run"}. Draft-first, approval-gated, suppression-checked: that is the whole product, in one lap.`, "log-done");
+      /* The fleet beat — three phones, three holdings, one approval
+         law. The tour ends standing on the Fellowship phone, so the
+         fleet is the last thing a judge sees; “My people” restores
+         the demo's own list from the Outreach view. */
+      narrate("One more lap — the fleet: three phones, three holdings, one approval law.", "log-done");
+      await wait(600);
+      setActiveHolding("fellowship");
+      const fh = currentHolding();
+      await wait(800);
+      if (fh) {
+        narrate(`This is the ${fh.phoneLabel}, running as ${fh.profileName}. Its queue holds the Fellowship's people alone — no other holding's names can appear on this phone — and anything that asks for a human goes to ${fh.handoff}. Watch its first card run the same loop:`);
+        const lead = state.queue.find(q => !q.suppressed && q.status === "waiting");
+        if (lead) {
+          setBusy(false);
+          await flowDraftOne(lead.id);
+          setBusy(true);
+          narrate("The fleet in miniature: researched, drafted in the holding's own voice, and waiting on a human. The phone proposes; the human disposes — on all three phones, the same law.", "log-done");
+        }
+      }
     }
     switchView("today");
     renderToday();
@@ -1922,14 +2170,16 @@ $("#person-form").addEventListener("submit", e => {
     draft: "", status: dnc ? "suppressed" : "waiting", user: true
   };
   const packOn = !!currentPack();
+  const holdingOn = currentHolding();
   myQueue().push(person);
   persistPeople();
   renderQueue();
   populateStudioPeople();
   e.target.reset();
   switchView("queue");
-  if (dnc) narrate(`${name} is on your do-not-contact list${packOn ? " — in your own list, under the pack you're viewing" : ""}. I'll never draft for them, and I'll say so if they ever come up.`, "log-refusal");
+  if (dnc) narrate(`${name} is on your do-not-contact list${packOn ? " — in your own list, under the pack you're viewing" : holdingOn ? ` — in your own list, under the ${holdingOn.phoneLabel} you're viewing` : ""}. I'll never draft for them, and I'll say so if they ever come up.`, "log-refusal");
   else if (packOn) narrate(`${name} is in your own queue, saved on this phone — you're viewing a pack right now, so they'll be there when you switch back to “My people”.`, "log-done");
+  else if (holdingOn) narrate(`${name} is in your own queue, saved on this phone — you're viewing the ${holdingOn.phoneLabel} right now, and houses never cross, so they join your list only, ready when you switch back to “My people”.`, "log-done");
   else narrate(`${name} is in your queue, saved on this phone. Tap “Draft” on their card, or let the Next best action find them.`, "log-done");
 });
 
@@ -2016,7 +2266,7 @@ $("#import-form").addEventListener("submit", e => {
   renderImportPreview();
   $("#import-text").value = "";
   switchView("queue");
-  narrate(`Imported ${chosen.length} ${chosen.length === 1 ? "person" : "people"} into your queue — parsed and stored on this phone only.${currentPack() ? " You're viewing a pack, so they join your own list, ready when you switch back." : ""} Reach drafts where a note gives it context, and never for anyone marked do-not-contact.`, "log-done");
+  narrate(`Imported ${chosen.length} ${chosen.length === 1 ? "person" : "people"} into your queue — parsed and stored on this phone only.${currentPack() ? " You're viewing a pack, so they join your own list, ready when you switch back." : currentHolding() ? ` You're viewing the ${currentHolding().phoneLabel}, so they join your own list, ready when you switch back.` : ""} Reach drafts where a note gives it context, and never for anyone marked do-not-contact.`, "log-done");
 });
 
 /* ---------------- Draft studio ---------------- */
@@ -2114,6 +2364,7 @@ $("#reset-demo-btn").addEventListener("click", () => {
   store.history = [];
   store.stats = { ...DEFAULT_STATS };
   store.packId = "";
+  store.holdingId = "";
   persist();
   narrate("Demo reset — your added people, saved drafts, and today's touches are cleared; your profile stays. Reloading the seeds…", "log-done");
   setTimeout(() => window.location.reload(), 900);
@@ -2131,6 +2382,7 @@ $("#erase-btn").addEventListener("click", () => {
 
 renderThreads();
 renderPackBar();
+renderHoldingBar();
 renderQueue();
 renderApprovals();
 updateBadges();

@@ -114,6 +114,52 @@ Three more additions, each aimed at a question judges actually ask:
   PhoneUse execution add-on — prices set at launch, no invented
   figures.
 
+## v2.5 — holding mode: the fleet (new today)
+
+*“Fine — but does it run anything real?”* The PhoneUse console
+account holds **three phones**. v2.5 turns them into a fleet:
+
+- **One phone per holding** — the **Fellowship phone** (community
+  and city-guide outreach; human handoff: a Fellowship steward),
+  the **Foundation phone** (partner and funder warmth; handoff:
+  Russell Vacanti, the co-founder), the **BuilderSpace phone**
+  (builder and employer outreach in the tour towns; handoff: Mike).
+  The switcher sits beside the pack loader in the Outreach view.
+- **Each phone is a world**: its own people slot, profile name,
+  mission, and starter set in its own voice — the Fellowship lead's
+  thank-you to a shelter partner, the Foundation lead's follow-up
+  to a programme officer (offering Russell by name), the
+  BuilderSpace lead's session-format reply to a meetup organiser.
+  Each first card runs the full flow: research → draft → approval.
+- **Isolation is architectural, and the tour proves it.** The
+  Judge Mode tour gains a **fleet beat**: it ends standing on the
+  Fellowship phone, drafts its first card in the Fellowship's
+  voice, and states the cross-check out loud — Clara Whitfield
+  exists on the Foundation phone; the Fellowship phone has never
+  heard of her. Houses never cross because a slot can only hold
+  its own people — asserted in the harness, including the negative
+  space (36 fleet assertions).
+- **The brief and the proof follow the phone.** On a holding phone,
+  the Morning Brief names the phone, its profile, its mission and
+  its handoff, and the impact panel counts that phone's own
+  touches, labelled as such. On “My people”, both behave exactly
+  as before.
+- **Config, not claims.** The hosted console's API surface is
+  under review in parallel, so Reach hard-codes none of it: the
+  fleet config carries the verified local surface (from the fork)
+  and deliberately empty console slots — device IDs land as
+  configuration when the review reports, and the harness asserts
+  the slots ship empty. The full operating design — role cards,
+  daily rhythm, and the spec wiring the phones into the existing
+  outreach programme's waves, suppression law, and caps — is
+  **PHONE-FLEET.md**.
+
+**The booth version:** three phones on the table, three holdings,
+one approval law. Load each phone with its holding, run the brief
+on one, a refusal on the second, an approval on the third — then
+try to load the Foundation's queue on the Fellowship phone, live,
+and let the architecture answer.
+
 ## Sponsor stack — live (v2.2, new today)
 
 The three sponsor tools are not logos in this build — they are wired
@@ -248,9 +294,13 @@ built to contend for the overall prizes on the strength of a working,
 useful, rails-first phone agent. The build also runs on the stacks of
 two of the event's partners, for real: **LangChain** (LangSmith
 tracing, in a project created for this app) and **Tavily** (live
-research, co-host of this edition) — plus ElevenLabs voice. No
-category or sponsor-specific prizes are claimed, because none are on
-the event record.
+research, co-host of this edition) — plus ElevenLabs voice. And the
+practical-use-case proof is a working fleet, not a slide: as of
+v2.5, the sponsor's own console phones map one-to-one onto a real
+network's three holdings, each running the same rails-first agent
+in its own voice, under one approval law. No category or
+sponsor-specific prizes are claimed, because none are on the event
+record.
 
 ## Deliberately NOT in the demo
 

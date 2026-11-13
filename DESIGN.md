@@ -640,3 +640,74 @@ green** — the 133 of v2.3 plus 39 covering pack isolation against
 the store, the pack first-item flow, suppressed pack members, pack
 persistence across reload, bridge body equality and auth shape,
 bridge refusal, the memory-only key invariant, and the waitlist.
+
+## 14 · v2.5 — holding mode: the fleet of three phones
+
+### One phone per holding
+
+The network's three holdings each get a phone: the **Fellowship
+phone** (community and city-guide outreach; human handoff: a
+Fellowship steward), the **Foundation phone** (partner and funder
+warmth; handoff: Russell Vacanti), and the **BuilderSpace phone**
+(builder and employer outreach in the tour towns; handoff: Mike).
+The full operating design — role cards, daily rhythm, the outreach
+wiring spec — is **PHONE-FLEET.md**. This section is the software
+design it ships with.
+
+### Slots, generalised
+
+v2.4's pack machinery turned out to be the right shape for a fleet:
+one slot on stage, your list stashed and restored exactly, slot
+drafts session-only. v2.5 generalises the swap into one mechanism
+(`activateSlot`) with three slot kinds — your people, a use-case
+pack, a holding — and Holding Mode is the third kind. A holding
+carries what a pack doesn't: a **profile name** the phone runs as,
+a **mission**, a **human handoff**, and a **starter set in the
+holding's own voice**, its first person running the complete
+research → draft → approval flow like every pack lead.
+
+### Isolation is the feature
+
+Houses never cross, and in v2.5 that is a data property: every
+starter person is tagged with their holding's id; a holding's slot
+can only ever render its own set; writes that belong to your people
+(add, import, persist) land in your slot while any slot is on
+stage; and hopping phone-to-phone stashes and restores through the
+same path packs proved. The harness asserts the negative space —
+loading the Foundation phone shows no Fellowship names, and the
+store holds no holding people — rather than trusting the positive
+path.
+
+### Per-phone records
+
+Two additive traces make the fleet countable without a schema
+bump: `holdingId` (which phone is on stage — the `packId` pattern,
+schema still v3) and a holding tag on each touch-history entry
+(which phone did the work). The Morning Brief and the impact panel
+read them: on a holding phone, the brief names the phone, its
+profile, its mission and its handoff, and the panel counts that
+phone's own touches, labelled as such; on “My people” both behave
+exactly as they did in v2.3. Refusal counters stay device-level —
+they are the programme's record, not a phone's.
+
+### Config, not claims
+
+The hosted PhoneUse console's surface was still under review when
+v2.5 shipped, so the fleet's console addressing is **configuration,
+not code**: `FLEET_CONFIG` holds the verified local surface (from
+the fork) and deliberately empty console slots (`consoleApiBase`,
+one device id per holding). The harness asserts the slots ship
+empty — a build that hard-coded an unverified endpoint would fail
+its own tests. When the console review lands, the facts fill the
+slots and the design is untouched.
+
+### What v2.5 deliberately did not change
+
+The rails, the schema (still v3; `holdingId` additive), the pack
+behaviour byte-for-byte (pack narrations are unchanged; holding
+narrations are parallel text), the bridge, and the no-keys
+behaviour. The extended harness now runs **208 assertions, all
+green** — the 172 of v2.4 plus 36 covering holding isolation
+against the store, direct phone-to-phone hops, per-holding brief
+and impact, pack/holding interplay, reload persistence, and the
+config-slot invariant.

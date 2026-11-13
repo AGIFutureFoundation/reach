@@ -132,6 +132,32 @@ and tested against the documented API; whether a given browser can
 reach the local API is an environment fact Reach reports, never a
 result it fakes.
 
+## The fleet — three hosted phones (v2.5)
+
+The PhoneUse console account (x@agifuturefoundation.org) holds
+**three hosted phones**, and v2.5's Holding Mode gives each a
+holding: Fellowship, Foundation, BuilderSpace. The operating
+design is **PHONE-FLEET.md**. What belongs in this review is the
+surface discipline:
+
+- **Verified (local):** everything in the PhoneUse section above —
+  `GET /health`, `POST /api/ai/tasks`, Bearer scoped keys, the two
+  allowlisted local origins. Reach's fleet configuration
+  (`FLEET_CONFIG` in `app.js`) carries exactly this surface as
+  `localBase` + `localTasksPath`.
+- **UNVERIFIED (hosted console):** the console's own API — its base,
+  its task endpoint shape, its device addressing — is **not
+  claimed** anywhere in Reach. A console review is inventorying it
+  in parallel; until it reports, `FLEET_CONFIG.phoneuse` carries
+  `consoleApiBase: ""` and a `consoleDevices` slot per holding,
+  all empty, and the harness asserts they ship empty (hf-05). The
+  design treats device IDs and console endpoints as **config that
+  lands later**, never as literals baked into the app.
+- **Addressing rule (design, pending the config):** a task is
+  addressed to exactly one holding's device, and the
+  holding → device mapping is part of the approval record, so a
+  misaddressed task is visible before it runs.
+
 ## The pattern the stack shares
 
 1. **BYOK, on-device.** No Reach server exists; there is nothing to
@@ -147,10 +173,12 @@ result it fakes.
    profile, the browser voice, the silent trace.
 4. **No keys, no change.** With the panel untouched, the app is
    behaviour-identical to v2.1 — the original assertion suites still
-   pass untouched inside the extended harness, which at v2.4 runs
-   **172 assertions, all green**: the v2 core, the v2.1 habit layer,
+   pass untouched inside the extended harness, which at v2.5 runs
+   **208 assertions, all green**: the v2 core, the v2.1 habit layer,
    the v2.2 adapters, the v2.3 brief / impact / judge-mode /
    warmth-report / captured-snapshot / PhoneUse-detection
-   behaviours, and the v2.4 use-case packs (isolation of your list
+   behaviours, the v2.4 use-case packs (isolation of your list
    proven against the store), the PhoneUse bridge (payload equality
-   proven byte-for-byte), and the Pro waitlist.
+   proven byte-for-byte), the Pro waitlist, and v2.5's holding mode
+   (fleet isolation, per-holding brief/impact, and the
+   config-not-claims invariant, all proven against the store).

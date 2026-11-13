@@ -18,7 +18,8 @@ const state = {
         { from: "them", text: "Hi! Harborlight is hosting a repair café next month and we'd love your workshop crew involved.", time: "Tue 09:12" },
         { from: "them", text: "Is there a short session you could run for first-timers? Happy to work around your schedule.", time: "Tue 09:13" }
       ],
-      draft: "Hi Maya — thanks for thinking of us. Yes: we can run a 45-minute first-timers' session at the repair café. People bring a broken small appliance and leave with it diagnosed, plus a plan to fix it. Send me the date you're leaning toward and I'll confirm the crew this week."
+      draft: "Hi Maya — thanks for thinking of us. Yes: we can run a 45-minute first-timers' session at the repair café. People bring a broken small appliance and leave with it diagnosed, plus a plan to fix it. Send me the date you're leaning toward and I'll confirm the crew this week.",
+      profile: "Harborlight Studio — a community workshop space that runs a monthly repair café, drawing 40–60 neighbours a session. Known for first-timer-friendly teaching and a bring-one-fix-one format."
     },
     {
       id: "t-devon", name: "Devon Park", org: "North Pier Books", unread: true,
@@ -26,7 +27,8 @@ const state = {
         { from: "me", text: "The reading list for the winter window is nearly ready — two titles to go.", time: "Mon 16:40" },
         { from: "them", text: "Thanks! Could you send the two titles you mentioned for our winter window display?", time: "Mon 17:02" }
       ],
-      draft: "Hi Devon — of course. For the window: “The Repair Café Handbook” for the practical shelf, and “A Field Guide to City Birds” for the glass — both hold up well with younger readers. Want me to drop off the display cards when they're printed?"
+      draft: "Hi Devon — of course. For the window: “The Repair Café Handbook” for the practical shelf, and “A Field Guide to City Birds” for the glass — both hold up well with younger readers. Want me to drop off the display cards when they're printed?",
+      profile: "North Pier Books — an independent bookshop whose winter window display weekend is its busiest footfall of the season; the display pairs a practical title with a nature title."
     },
     {
       id: "t-ruth", name: "Ruth Callahan", org: "Fernhill Community Hall", unread: false,
@@ -178,6 +180,7 @@ function renderThreads() {
 
 function openThread(id) {
   state.activeThreadId = id;
+  $("#research-card").hidden = true;
   renderThread();
   switchView("thread");
 }
@@ -325,6 +328,13 @@ async function flowReply() {
     const last = [...t.messages].reverse().find(m => m.from === "them");
     await wait(500);
     narrate(`Reading the latest message from ${t.name}: “${last.text}”`);
+    if (t.profile) {
+      narrate(`Before drafting, I'll look up ${t.org}. In the live product this step is a web-research lookup (Tavily-style); in this demo it reads a staged profile — the card says so on its face.`);
+      const card = $("#research-card");
+      $("#research-text").textContent = t.profile;
+      card.hidden = false;
+      await agentTouch(card, `Research found: ${t.profile}`);
+    }
     narrate("Drafting a reply that answers it…");
     await wait(900);
     addApproval("reply", t.id, t.name, t.org, t.draft);

@@ -15,6 +15,26 @@ Status labels used throughout, per the network design system: **Live** (in the
 demo now), **Planned** (designed, not built), **Roadmap** (needs a native layer
 or a connector that does not exist yet).
 
+## The event frame
+
+Reach was built at **Do Not Disturb: Phone Use Hackathon** (organiser:
+**Exit 1**; co-hosts include Sahar Mor / Bond AI, Intertech Talents, and
+Tavily Events), Frontier Tower edition, 2026-11-13. The event's rule is the
+brief above — every project must be phone-accessible, built for agents that
+use a phone — and its tagline is the thesis Reach is built on:
+
+> "Your phone is on Do Not Disturb. Your agent isn't."
+
+Partners and sponsors published for the series: Entrepreneurs First, Phone
+Use, LangChain, Replit, Bond AI, Intertech Talents; Tavily co-hosts this
+edition. Two of those names shape the architecture below directly: the demo
+includes one visible **web-research step** in the reply flow (the research
+slot a production agent fills with a Tavily-style lookup), and the
+production agent loop is described as an **orchestration graph** —
+perceive → research → draft → approve → act → verify — of the kind
+LangChain-style frameworks formalise. The demo itself is dependency-free
+vanilla JS: it borrows the shape, not the libraries, and says so.
+
 ---
 
 ## 1 · The accessibility thesis
@@ -154,6 +174,15 @@ Android is where a true cross-app phone agent is permitted to exist:
 - A **NotificationListenerService** surfaces inbound replies across apps,
   which is what makes "reply to the first unread message" a cross-app
   instruction rather than an in-app one.
+- **This pattern is proven, not speculative.** OpenPhoneUse
+  (github.com/joungminsung/OpenPhoneUse), an open-source phone-use agent
+  from this event's own ecosystem, runs on-device on Android with a
+  **single AccessibilityService — no PC, no root, no ADB** — reading the
+  screen, then tapping, typing, scrolling, and switching apps. Reach's
+  native layer follows that shape exactly: one accessibility service, the
+  accessibility tree as perception, declared purpose — plus Reach's own
+  addition, the approval gate interposed before any send, which a general
+  phone-use agent does not need but an outreach agent must have.
 - This layer carries real obligations the design already anticipates:
   Android requires accessibility-API apps to declare their purpose, and
   Reach's purpose declaration writes itself from §2 — the user directs,
@@ -229,8 +258,13 @@ Reply sent.*
 The three scripted flows run end-to-end:
 
 1. **"Reply to the first unread message"** — the agent scans Messages,
-   opens the first unread thread, reads the last message, drafts a reply in
-   context, and parks it in Approvals. Nothing sends until the human
+   opens the first unread thread, reads the last message, then runs one
+   visible **research step**: it looks the sender's organisation up and
+   shows a profile card before drafting. In the demo that card is a
+   staged profile, labelled on its face as simulating the live
+   web-research lookup (the Tavily slot in the production orchestration);
+   the finding is narrated like every other step. Then it drafts a reply
+   in context and parks it in Approvals. Nothing sends until the human
    approves; approval triggers the typing animation and the message
    visibly lands in the thread.
 2. **"Work the outreach queue"** — the agent walks the queue in order:

@@ -97,4 +97,6 @@ from a web build.
 
 ---
 
-*Reach · an AGI Future Foundation hackathon build · 2026-11-13*
+*Reach · an AGI Future Foundation hackathon build · Made at **Do Not Disturb:
+Phone Use Hackathon** (Exit 1), Frontier Tower edition · 2026-11-13 ·
+"Your phone is on Do Not Disturb. Your agent isn't."*

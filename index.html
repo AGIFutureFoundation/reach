@@ -60,6 +60,11 @@
         <section id="view-thread" class="view" aria-label="Conversation" hidden>
           <button type="button" class="back-btn" id="thread-back">‹ All messages</button>
           <h3 class="thread-title" id="thread-title"></h3>
+          <aside class="research-card" id="research-card" hidden aria-label="Organisation profile from agent research">
+            <p class="research-kind">Agent research · org profile</p>
+            <p class="research-text" id="research-text"></p>
+            <p class="research-note">Staged profile — in the live product, this card is filled by a web-research lookup.</p>
+          </aside>
           <div class="bubble-stream" id="bubble-stream"></div>
           <form class="composer" id="composer-form">
             <label class="visually-hidden" for="composer-input">Message text</label>
@@ -154,8 +159,10 @@
     its own staged apps; reading <em>other</em> apps needs the Android accessibility
     layer on the roadmap, and iOS gets an approval console instead — the design
     document in the repository says exactly where each claim stops.</p>
-  <p class="foot-meta">Reach · an AGI Future Foundation hackathon build · Draft-first,
-    human-approved, suppression-respecting — the rails are the product.</p>
+  <p class="foot-meta">Reach · an AGI Future Foundation build, made at
+    <strong>Do Not Disturb: Phone Use Hackathon</strong> (Exit 1) · Frontier Tower,
+    2026-11-13 · Draft-first, human-approved, suppression-respecting — the rails are
+    the product.</p>
 </footer>
 
 <script src="app.js"></script>

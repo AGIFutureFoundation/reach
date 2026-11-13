@@ -347,3 +347,16 @@ body {
   *, *::before, *::after { transition: none !important; animation: none !important; }
   .flow-btn:hover { transform: none; }
 }
+
+/* research card (agent's org-profile step inside the thread view) */
+
+.research-card {
+  background: #eef6f6; border: 1.5px solid var(--ds-teal);
+  border-radius: var(--ds-radius-md); padding: .7rem .8rem; margin-bottom: .9rem;
+}
+.research-kind {
+  font-size: .72rem; font-weight: 800; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ds-teal); margin: 0 0 .2rem;
+}
+.research-text { margin: 0 0 .3rem; font-size: .92rem; }
+.research-note { margin: 0; font-size: .78rem; color: var(--ds-text-700); }

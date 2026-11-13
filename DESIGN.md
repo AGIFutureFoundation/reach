@@ -114,9 +114,9 @@ carries the discipline in as **system behaviour**:
 |---|---|
 | **Draft-first, exact-copy approval.** Nothing sends that a human has not read and approved verbatim. | Every send is gated behind an approval card showing the full draft. The agent cannot approve its own work. (**Live**) |
 | **Suppression is law.** Anyone who asked not to be contacted — bounced, unsubscribed, declined — is never contacted again. | Suppression is checked **before drafting**, not before sending. Faced with a suppressed contact, the agent refuses, skips, and says why in the log. No draft is ever produced for them. (**Live**) |
-| **Personalisation gate.** Every outreach record needs a real reason this person, from a real source — or the send is held, never invented. | Queue items carry a visible *fit note* (why this person, from what signal). An item without one would be held by the agent, not padded out. (**Live** in demo data; gate logic **Planned**) |
-| **Caps and pacing.** 90 sends/day per mailbox, ≤250 cold sends/day, sends spaced rather than blasted; a day already over cap stops the wave. | The agent narrates cap state as it works and processes approvals one at a time. In the real version these are hard counters, not advice. (**Live** as narration; hard enforcement **Planned**) |
-| **Published contacts only.** Pools are built from published emails, never inferred or pattern-generated. | A data-provenance line travels with each queue item in the real version (source + date). The demo's queue is labelled fictional. (**Planned**) |
+| **Personalisation gate.** Every outreach record needs a real reason this person, from a real source — or the send is held, never invented. | Queue items carry a visible *fit note* (why this person, from what signal). An item without one is held by the agent, not padded out — the gate is enforced as code in the queue flow, the draft-one path, and the studio. (**Live** since v2) |
+| **Caps and pacing.** 90 sends/day per mailbox, ≤250 cold sends/day, sends spaced rather than blasted; a day already over cap stops the wave. | The caps are **hard counters in the day's persisted state**: every staged send decrements the visible count on Today, and at the cap the send is refused and the draft held for tomorrow. (**Live** since v2.1; narration-only before) |
+| **Published contacts only.** Pools are built from published emails, never inferred or pattern-generated. | A one-line data-provenance travels with each queue item and approval card — *Seed demo data* / *Source: added by you* / *Source: imported by you*. (**Live** since v2.1) |
 | **Verified numbers only.** The programme reports Sent-verified counts, never "we sent about…". | The demo's summary flow counts actual state — unreads, drafts, sends that happened in the session — nothing projected. (**Live**) |
 
 ### Why this is genuinely useful, not a novelty
@@ -301,14 +301,18 @@ Free-text commands route by intent ("reply…", "queue…", "summarize…",
    three flows, voice in/out where the browser supports it. **Live**
 2. **v1.1** — personalisation-gate enforcement in the queue flow (hold items
    with no fit note), hard cap counters, per-item provenance lines.
-   **Planned** — *the personalisation gate landed early, in v2 (§9).*
+   *The gate landed early, in v2 (§9); the counters and provenance
+   landed in v2.1 (§10).*
 3. **v2 (shipped — see §9)** — the habit layer: Today home, local profile,
    your people, draft studio, Copy/Share bridge, Listen mode, trust
    controls. **Live**
-4. **v3** — connector-backed: a real inbox behind the stage (read-only
+4. **v2.1 (shipped — see §10)** — the deep build: hard cap counters +
+   provenance, paste-import, follow-up nudges, service-worker shell,
+   text size + approval-card keyboard operation. **Live**
+5. **v3** — connector-backed: a real inbox behind the stage (read-only
    first), approvals handed to a send connector, Sent-verification returned
    to the phone. agent-net packets as the work transport. **Roadmap**
-5. **v4** — Android native layer: AccessibilityService reading + input,
+6. **v4** — Android native layer: AccessibilityService reading + input,
    notification-driven reply queue. iOS approval console. **Roadmap**
 
 ---
@@ -411,8 +415,35 @@ only — the card, the approval, and the count stay identical.
 - No notifications, streaks, or badges beyond the day itself — the
   all-done state is the retention mechanic; nagging would betray the
   “Do Not Disturb” thesis the product was born under.
-- No background sync, no contact import, no address book access: import
-  arrives with the connector layer, under the programme's
-  published-contacts-only rule.
+- No background sync, no address book access. (v2.1 added the narrow,
+  honest form of import — a list the user pastes themselves, parsed
+  on-device — see §10. Address-book access still arrives only with the
+  connector layer, under the programme's published-contacts-only rule.)
 - No loosening of §8. The guided demo's single stand-in approval is
   narrated as exactly that, and no other flow can approve anything.
+
+---
+
+## 10 · v2.1 — the deep build: rails become state
+
+v2 made Reach a habit. v2.1 makes its claims *mechanical*. Everything in
+this pass was previously true as narration or documentation; now it is
+true as code, persisted in the same on-device store (schema v3, migrated
+forward from v2 — profile, people, and history survive the upgrade).
+
+| Addition | What changed | Status |
+|---|---|---|
+| **Cap counters** | Sends live in the day state: mailbox sends against 90/day, queue/studio sends also against ≤250 cold/day. Today shows them ("3 of 90 sends used today"); at the cap, approval is refused with the reason narrated and the draft held — the exact behaviour the real programme's stop-the-wave rule describes. | **Live** |
+| **Provenance lines** | One line on every queue card and approval card: *Seed demo data* · *Source: added by you · context on record* · *Source: imported by you · context on record* · *Nudge you scheduled*. Provenance is part of the item, persisted with saved drafts. | **Live** |
+| **Paste-import** | One person per line — `Name`, `Name, note`, or CSV `name,org,note`; `!` prefix or per-row toggle marks do-not-contact; duplicates against the existing queue (and within the paste) are flagged and always skipped. Parsed entirely on-device; the form says, in bold, that nothing is uploaded anywhere. Imported people join the queue, the missions, and the studio like added people, flagged *Imported by you*. | **Live** |
+| **Follow-up nudges** | After a staged send, a copy, or a share, Reach offers *Nudge in 3 / 7 / 30 days*. The nudge persists; when due it appears on Today as a fourth row — **Due follow-ups** — leads the Next best action, and drafts the follow-up from the on-record context in one tap. No notifications: the row is the reminder, which keeps the Do Not Disturb thesis intact. | **Live** |
+| **Service worker** | Same-origin, versioned (`reach-shell-v3`), cache-first with background refresh for the app shell only; `skipWaiting` on update, old caches dropped on activate. Registered from index.html inside try/catch as progressive enhancement — with the worker blocked or absent, the app is byte-for-byte the v2 experience. | **Live** |
+| **Text size** | 100% / 125% / 150%, chosen in the profile, persisted with it, applied to panel and stage alike on every load. | **Live** |
+| **Keyboard approvals** | Approval cards are focusable; ↑ / ↓ move between cards, **A** approves, **C** copies, **S** shares — never while editing the draft text. After any flow completes, focus returns to the control that launched it (or the current view's tab), and after a decision, to the next waiting card. | **Live** |
+
+Verification for this pass: the v2 smoke harness was extended from 28 to
+67 assertions — the original 28 (flows, gate, suppression, save/restore,
+tour) plus counters decrementing and persisting, refusal at the cap,
+provenance rendering, import parsing/dedupe/do-not-contact, nudge
+scheduling/surfacing/drafting, and text-size persistence across a
+simulated reload. All pass against the real `app.js`.

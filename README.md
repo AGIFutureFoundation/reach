@@ -61,6 +61,33 @@ browser, on your phone. Nothing sends anywhere real.
   subordinate to the existing floors: 48px targets, AA contrast, ARIA
   live narration, `prefers-reduced-motion` respected everywhere.
 
+## What's new in v2.1 — the deep build
+
+- **Real counters, real refusal.** The programme caps are state now:
+  every staged send counts against **90/day per mailbox** and **≤250
+  cold/day**, persisted with the day and shown on Today (“3 of 90 sends
+  used today”). At the cap, the send is refused and the draft waits for
+  tomorrow. Every queue and approval item carries a one-line
+  **provenance**: *Seed demo data* · *Source: added by you* ·
+  *Source: imported by you*.
+- **Import your people.** Paste a list — `Name`, `Name, a note`, or CSV
+  `name,org,note` — preview it, mark anyone do-not-contact (`!` prefix
+  or the per-row toggle), and confirm. Duplicates are flagged and always
+  skipped. It is parsed entirely on the phone; nothing is uploaded
+  anywhere, and the UI says so.
+- **Follow-ups.** After a send, copy, or share, Reach offers a **nudge in
+  3, 7, or 30 days**. Due nudges surface on Today as a fourth row — *Due
+  follow-ups* — with the draft one tap away, and they lead the Next best
+  action when due.
+- **A complete PWA.** A dependency-free service worker caches the app
+  shell (same-origin, versioned, cache-first with background refresh),
+  so Reach opens offline after the first visit — registered as pure
+  progressive enhancement; block it and nothing changes.
+- **Deeper accessibility.** A persisted **text-size toggle**
+  (100% / 125% / 150%) in the profile; **full keyboard operation** of
+  approval cards (↑ ↓ move, **A** approve, **C** copy, **S** share);
+  focus returns to a sensible place after every flow completes.
+
 
 ## Why people come back
 
@@ -107,7 +134,9 @@ programme as system behaviour, not etiquette:
 - **Personalisation gate.** Every queue item carries a visible fit note —
   the real reason this person. No reason, no draft.
 - **Caps and pacing.** Sends are spaced and capped (the real programme:
-  90/day per mailbox, ≤250 cold/day). The agent narrates the pace.
+  90/day per mailbox, ≤250 cold/day) — and since v2.1 those caps are
+  hard counters in the day's state, shown on Today and enforced with a
+  refusal at the cap, not just narrated.
 - **Verified numbers only.** Summaries count what actually happened in
   the session — never projections.
 
@@ -130,8 +159,11 @@ mapping — is in [DESIGN.md](DESIGN.md).
 Static site, no build step, no dependencies:
 
 ```text
-index.html · app.js · style.css · manifest.webmanifest · icon.svg
+index.html · app.js · style.css · manifest.webmanifest · icon.svg · sw.js
 ```
+
+Judging? Start with [JUDGING.md](JUDGING.md) — the 30-second pitch, the
+90-second tour script, and the claim boundary in one page.
 
 Serve the folder with any static host (GitHub Pages works) or open
 `index.html` from a local server. Add it to a phone home screen and it
@@ -143,9 +175,12 @@ support, safe at 200% zoom.
 
 ## Roadmap
 
-- **v2 (this build)** — the habit layer: Today home, local profile,
+- **v2** — the habit layer: Today home, local profile,
   your people, draft studio, Copy/Share bridge, saved drafts, Listen
   mode, export/erase. **Live**
+- **v2.1 (this build)** — the deep build: hard cap counters +
+  provenance, paste-import, scheduled follow-up nudges, service-worker
+  PWA shell, text-size toggle, keyboard-operated approvals. **Live**
 - **v3** — a real inbox behind the stage (read-only first); approvals
   handed to a send connector, replacing the Copy/Share bridge where a
   connector exists; Sent-verification returned to the phone; agent-net

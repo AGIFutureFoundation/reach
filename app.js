@@ -1,5 +1,5 @@
 "use strict";
-/* Reach v2 — accessibility-first phone agent (demo).
+/* Reach v2.1 — accessibility-first phone agent (demo).
    v2 promise: never let a warm connection go cold. Every person and
    organisation in the seeded data below is fictional. The agent reads
    the stage's real DOM, acts on real elements, and never sends anything
@@ -85,10 +85,11 @@ let approvalSeq = 0;
    unavailable (private mode, blocked), Reach runs on in-memory state. */
 
 const LS_KEY = "reach.v2";
-const LS_VERSION = 2;
+const LS_VERSION = 3;
 
 const DEFAULT_PROFILE = {
-  name: "", role: "", tone: "Warm", signoff: "", intention: "Keep in touch with people who matter"
+  name: "", role: "", tone: "Warm", signoff: "", intention: "Keep in touch with people who matter",
+  textSize: "100"
 };
 
 function dateKey(d) {
@@ -98,21 +99,24 @@ function dateKey(d) {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-function freshDay() { return { date: dateKey(), touches: 0, kinds: [] }; }
+function freshDay() { return { date: dateKey(), touches: 0, kinds: [], mailbox: 0, cold: 0 }; }
 
 function loadStore() {
-  const blank = { version: LS_VERSION, profile: { ...DEFAULT_PROFILE }, people: [], saved: [], day: freshDay(), history: [] };
+  const blank = { version: LS_VERSION, profile: { ...DEFAULT_PROFILE }, people: [], saved: [], day: freshDay(), nudges: [], history: [] };
   try {
     const raw = window.localStorage.getItem(LS_KEY);
     if (!raw) return blank;
     const parsed = JSON.parse(raw);
-    if (!parsed || parsed.version !== LS_VERSION) return blank;
+    /* v2 stores migrate forward: profile, people, saved drafts and
+       history survive; the new fields take their defaults. */
+    if (!parsed || (parsed.version !== 2 && parsed.version !== LS_VERSION)) return blank;
     const out = {
       version: LS_VERSION,
       profile: { ...DEFAULT_PROFILE, ...(parsed.profile || {}) },
       people: Array.isArray(parsed.people) ? parsed.people : [],
       saved: Array.isArray(parsed.saved) ? parsed.saved : [],
-      day: parsed.day && parsed.day.date === dateKey() ? parsed.day : freshDay(),
+      day: parsed.day && parsed.day.date === dateKey() ? { ...freshDay(), ...parsed.day, date: dateKey() } : freshDay(),
+      nudges: Array.isArray(parsed.nudges) ? parsed.nudges : [],
       history: Array.isArray(parsed.history) ? parsed.history : []
     };
     return out;
@@ -151,7 +155,7 @@ function persistSaved() {
 /* A "touch" is a completed connection: an approved staged send, or a
    draft you copied/shared out to a real app. Counted per calendar day. */
 function recordTouch(kind, name) {
-  if (store.day.date !== dateKey()) store.day = freshDay();
+  ensureToday();
   store.day.touches += 1;
   if (!store.day.kinds.includes(kind)) store.day.kinds.push(kind);
   store.history.push({ date: store.day.date, kind, name: name || "" });
@@ -160,11 +164,116 @@ function recordTouch(kind, name) {
   renderToday();
 }
 
+/* ---------------- real counters: the programme caps as state ----------------
+   DESIGN §7, made real in v2.1: every staged send counts against the
+   mailbox's 90/day cap; queue and studio sends also count against the
+   ≤250/day cold cap. The counters live in the day state, persist with
+   it, reset with the calendar day, and refuse the send at the cap. */
+
+const MAILBOX_CAP = 90;
+const COLD_CAP = 250;
+
+function ensureToday() {
+  if (store.day.date !== dateKey()) store.day = freshDay();
+  return store.day;
+}
+
+function sendCounts() {
+  const d = ensureToday();
+  return { mailbox: d.mailbox || 0, cold: d.cold || 0 };
+}
+
+function recordSend(cold) {
+  const d = ensureToday();
+  d.mailbox = (d.mailbox || 0) + 1;
+  if (cold) d.cold = (d.cold || 0) + 1;
+  persist();
+  renderToday();
+  return sendCounts();
+}
+
+/* Provenance travels with every item (DESIGN §2): one line saying
+   where this person came from, on the queue card and the approval. */
+function provenanceOf(q) {
+  if (!q) return "";
+  if (q.user) return q.imported ? "Source: imported by you · context on record" : "Source: added by you · context on record";
+  return "Seed demo data";
+}
+
 function firstName(full) { return (full || "").trim().split(/\s+/)[0] || "there"; }
 
 function capitalise(s) {
   s = (s || "").trim();
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+/* ---------------- follow-ups: nudges you scheduled ----------------
+   After a send, copy, or share, Reach offers one gentle thing: a
+   nudge in 3, 7, or 30 days. Nudges persist on the phone and surface
+   on Today when due — no notifications, no nagging, just the row. */
+
+let pendingNudge = null;
+
+function addDaysKey(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return dateKey(d);
+}
+
+function fmtDay(key) {
+  const parts = String(key).split("-").map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+function offerNudge(info) {
+  pendingNudge = info;
+  renderNudgeOffer();
+}
+
+function renderNudgeOffer() {
+  const box = $("#nudge-offer");
+  if (!box) return;
+  if (!pendingNudge) { box.hidden = true; box.innerHTML = ""; return; }
+  box.hidden = false;
+  box.innerHTML = `
+    <p class="nudge-offer-text">Follow up with <strong>${escapeHtml(pendingNudge.name)}</strong> so this one doesn't go cold?</p>
+    <div class="nudge-offer-actions">
+      <button type="button" class="mini-btn" data-nudge-days="3">Nudge in 3 days</button>
+      <button type="button" class="mini-btn" data-nudge-days="7">Nudge in 7 days</button>
+      <button type="button" class="mini-btn" data-nudge-days="30">Nudge in 30 days</button>
+      <button type="button" class="mini-btn" data-nudge-days="0">No thanks</button>
+    </div>`;
+  $$("[data-nudge-days]", box).forEach(b => b.addEventListener("click", () => {
+    const days = Number(b.dataset.nudgeDays);
+    const info = pendingNudge;
+    pendingNudge = null;
+    renderNudgeOffer();
+    if (!info) return;
+    if (days === 0) { narrate(`No nudge for ${info.name} — the queue is there whenever you're ready.`); return; }
+    const nudge = { id: "n-" + Date.now().toString(36), personId: info.personId, name: info.name, org: info.org, fit: info.fit || "", due: addDaysKey(days) };
+    store.nudges.push(nudge);
+    persist();
+    renderToday();
+    narrate(`Nudge set — ${info.name} will surface on Today on ${fmtDay(nudge.due)}. Stored on this phone only.`, "log-done");
+  }));
+}
+
+function dueNudges() {
+  const today = dateKey();
+  return (store.nudges || []).filter(n => n.due <= today);
+}
+
+async function draftNudge(id) {
+  const n = (store.nudges || []).find(x => x.id === id);
+  if (!n) return;
+  store.nudges = store.nudges.filter(x => x.id !== id);
+  persist();
+  const personLike = { name: n.name, org: n.org, fit: n.fit || "" };
+  const text = generateDraft(personLike, "follow-up");
+  addApproval("studio", n.personId, n.name, n.org, text, "follow-up", "Nudge you scheduled · from your follow-ups");
+  switchView("approvals");
+  renderToday();
+  narrate(`Here's the follow-up for ${n.name} — drafted from what's on record. Approve it, copy it, or save it for later.`, "log-done");
 }
 
 /* ---------------- draft studio generator ----------------
@@ -345,6 +454,11 @@ function nextAction() {
     return { kind: "reply", label: `Reply to ${unread.name}`,
       sub: `${unread.org} is waiting. Reach reads it, drafts, you approve.` };
   }
+  const dueN = dueNudges()[0];
+  if (dueN) {
+    return { kind: "nudge", refId: dueN.id, label: `Follow up with ${dueN.name}`,
+      sub: "A nudge you scheduled is due. One draft, from what's on record." };
+  }
   const waiting = state.queue.find(q => !q.suppressed && q.status === "waiting" && q.fit);
   if (waiting) {
     return { kind: "draft", refId: waiting.id, label: `${MOVE_LABELS[waiting.move] || "Reach out"} — ${waiting.name}`,
@@ -386,6 +500,29 @@ function renderToday() {
     $("#next-action-sub").textContent = "Replies answered, drafts decided, queue warm.";
     $("#today-clear").hidden = false;
   }
+  const counts = sendCounts();
+  const capsEl = $("#caps-line");
+  if (capsEl) capsEl.textContent = `Sends today: ${counts.mailbox} of ${MAILBOX_CAP} per mailbox · ${counts.cold} of ${COLD_CAP} cold. The programme's real caps — counted, and enforced.`;
+  const due = dueNudges();
+  const fBlock = $("#followups-block");
+  if (fBlock) {
+    fBlock.hidden = due.length === 0;
+    $("#followups-list").innerHTML = due.map(n => `
+      <li class="followup-row">
+        <span class="followup-who"><strong>${escapeHtml(n.name)}</strong> · ${escapeHtml(n.org)} <span class="followup-due">Due ${n.due === dateKey() ? "today" : fmtDay(n.due)}</span></span>
+        <span class="followup-actions">
+          <button type="button" class="mini-btn" data-nudge-draft="${n.id}">Draft the nudge</button>
+          <button type="button" class="mini-btn" data-nudge-done="${n.id}">Done</button>
+        </span>
+      </li>`).join("");
+    $$("[data-nudge-draft]", fBlock).forEach(b => b.addEventListener("click", () => draftNudge(b.dataset.nudgeDraft)));
+    $$("[data-nudge-done]", fBlock).forEach(b => b.addEventListener("click", () => {
+      store.nudges = store.nudges.filter(x => x.id !== b.dataset.nudgeDone);
+      persist();
+      renderToday();
+      narrate("Follow-up cleared — warm connection kept.", "log-done");
+    }));
+  }
   const unreadCount = state.threads.filter(t => t.unread).length;
   $("#mission-reply-count").textContent = unreadCount ? `${unreadCount} unread` : "All answered";
   const thankQ = state.queue.find(q => q.move === "thank" && !q.suppressed);
@@ -399,6 +536,7 @@ async function runNextAction() {
   if (!na) { narrate("You're clear — every warm connection is warm.", "log-done"); switchView("today"); return; }
   if (na.kind === "approvals") { switchView("approvals"); narrate(`${state.approvals.length} draft${state.approvals.length === 1 ? "" : "s"} waiting on your decision. Read, edit if you like, then approve — or copy one out to a real app.`); return; }
   if (na.kind === "reply") return flowReply();
+  if (na.kind === "nudge") return draftNudge(na.refId);
   if (na.kind === "draft") return flowDraftOne(na.refId);
 }
 
@@ -449,6 +587,7 @@ function renderQueue() {
     return `<li><article class="queue-card" data-queue="${q.id}">
       <h3>${escapeHtml(q.name)}</h3>
       <p class="queue-org">${escapeHtml(q.org)}${q.move ? ` · ${escapeHtml(MOVE_LABELS[q.move] || "Follow up")}` : ""}${q.user ? ` · <span class="yours-tag">Added by you</span>` : ""}</p>
+      <p class="provenance">${escapeHtml(provenanceOf(q))}</p>
       ${q.suppressed
         ? `<p class="suppress-note"><strong>Do not contact.</strong> ${escapeHtml(q.suppressReason)}</p>`
         : `<p class="fit-note"><strong>Why them:</strong> ${escapeHtml(q.fit || "No context on record — Reach will hold, not invent one.")}</p>`}
@@ -470,9 +609,10 @@ function renderApprovals() {
   const wrap = $("#approval-list");
   $("#approvals-empty").hidden = state.approvals.length > 0 || state.saved.length > 0;
   wrap.innerHTML = state.approvals.map(a => `
-    <article class="approval-card" data-approval="${a.id}">
+    <article class="approval-card" data-approval="${a.id}" tabindex="0">
       <p class="approval-kind">${escapeHtml(draftKindLabel(a))} · waiting for your decision</p>
       <p class="approval-to">To: ${escapeHtml(a.toName)} · ${escapeHtml(a.org)}</p>
+      ${a.prov ? `<p class="approval-prov">${escapeHtml(a.prov)}</p>` : ""}
       <label class="visually-hidden" for="draft-${a.id}">Draft message to ${escapeHtml(a.toName)} — edit if you like, then approve the exact text</label>
       <textarea class="approval-draft" id="draft-${a.id}" rows="6">${escapeHtml(a.text)}</textarea>
       <div class="approval-actions">
@@ -504,6 +644,7 @@ function renderApprovals() {
     <article class="approval-card saved-card" data-saved="${s.id}">
       <p class="approval-kind">Saved for later · ${escapeHtml(MOVE_LABELS[s.move] || "Draft")}</p>
       <p class="approval-to">To: ${escapeHtml(s.toName)} · ${escapeHtml(s.org)}</p>
+      ${s.prov ? `<p class="approval-prov">${escapeHtml(s.prov)}</p>` : ""}
       <p class="saved-text">${escapeHtml(s.text)}</p>
       <div class="approval-actions">
         <button type="button" class="mini-btn" data-restore="${s.id}">Back to approvals</button>
@@ -533,8 +674,8 @@ function renderApprovals() {
 
 /* ---------------- approvals: the human decision ---------------- */
 
-function addApproval(kind, refId, toName, org, text, move) {
-  const a = { id: "a" + (++approvalSeq), kind, refId, toName, org, text, move: move || "" };
+function addApproval(kind, refId, toName, org, text, move, prov) {
+  const a = { id: "a" + (++approvalSeq), kind, refId, toName, org, text, move: move || "", prov: prov || "" };
   state.approvals.push(a);
   renderApprovals();
   return a;
@@ -573,9 +714,15 @@ function approvalCurrentText(a) {
   return ta ? ta.value : a.text;
 }
 
+function nudgeInfoFor(a) {
+  const q = state.queue.find(x => x.id === a.refId);
+  return { personId: a.refId, name: a.toName, org: a.org, fit: (q && q.fit) || "" };
+}
+
 function copyApproval(id) {
   const a = state.approvals.find(x => x.id === id);
-  if (a) copyText(approvalCurrentText(a), a.toName, false);
+  if (!a) return;
+  copyText(approvalCurrentText(a), a.toName, false).then(ok => { if (ok) offerNudge(nudgeInfoFor(a)); });
 }
 
 async function shareApproval(id) {
@@ -587,10 +734,12 @@ async function shareApproval(id) {
       await navigator.share({ text });
       narrate(`Shared the draft for ${a.toName} — send it from the app you picked. That counts as a touch.`, "log-done");
       recordTouch("share", a.toName);
+      offerNudge(nudgeInfoFor(a));
       return;
     } catch (_) { /* dismissed — fall through to copy */ }
   }
-  copyText(text, a.toName, false);
+  const ok = await copyText(text, a.toName, false);
+  if (ok) offerNudge(nudgeInfoFor(a));
 }
 
 function saveApproval(id) {
@@ -599,7 +748,7 @@ function saveApproval(id) {
   const a = state.approvals[idx];
   a.text = approvalCurrentText(a);
   state.approvals.splice(idx, 1);
-  state.saved.push({ id: a.id, kind: a.kind, refId: a.refId, toName: a.toName, org: a.org, text: a.text, move: a.move || "" });
+  state.saved.push({ id: a.id, kind: a.kind, refId: a.refId, toName: a.toName, org: a.org, text: a.text, move: a.move || "", prov: a.prov || "" });
   if (a.kind !== "reply") {
     const q = state.queue.find(x => x.id === a.refId);
     if (q && q.status === "drafted") { q.status = "saved"; renderQueue(); }
@@ -614,7 +763,7 @@ function restoreSaved(id) {
   if (idx === -1) return;
   const s = state.saved[idx];
   state.saved.splice(idx, 1);
-  addApproval(s.kind || "outreach", s.refId, s.toName, s.org, s.text, s.move);
+  addApproval(s.kind || "outreach", s.refId, s.toName, s.org, s.text, s.move, s.prov || "");
   const q = state.queue.find(x => x.id === s.refId);
   if (q && q.status === "saved") { q.status = "drafted"; renderQueue(); }
   persistSaved();
@@ -622,10 +771,50 @@ function restoreSaved(id) {
   narrate(`The draft for ${s.toName} is back in Approvals, waiting for your decision.`);
 }
 
+/* Full keyboard operation for approval cards: focus a card, then
+   ↑ / ↓ move between cards, A approves, C copies, S shares. Keys
+   never fire while you are editing the draft text itself. */
+$("#approval-list").addEventListener("keydown", e => {
+  if (e.target.closest("textarea, input, select")) return;
+  const card = e.target.closest("[data-approval]");
+  if (!card) return;
+  const id = card.dataset.approval;
+  const key = (e.key || "").toLowerCase();
+  if (key === "arrowdown" || key === "arrowup") {
+    e.preventDefault();
+    const cards = $$(".approval-card", $("#approval-list"));
+    const i = cards.indexOf(card);
+    const next = cards[key === "arrowdown" ? Math.min(i + 1, cards.length - 1) : Math.max(i - 1, 0)];
+    if (next) next.focus();
+    return;
+  }
+  if (key === "a") { e.preventDefault(); approveApproval(id); }
+  else if (key === "c") { e.preventDefault(); copyApproval(id); }
+  else if (key === "s") { e.preventDefault(); shareApproval(id); }
+});
+
+/* After a decision completes, focus lands somewhere sensible: the
+   next waiting card, or the empty note when the queue is decided. */
+function focusAfterDecision() {
+  const first = $(".approval-card");
+  if (first) { first.focus(); return; }
+  if (state.activeView === "approvals") {
+    const empty = $("#approvals-empty");
+    if (empty) { empty.setAttribute("tabindex", "-1"); empty.focus(); }
+  }
+}
+
 async function approveApproval(id) {
   const idx = state.approvals.findIndex(a => a.id === id);
   if (idx === -1) return;
   const a = state.approvals[idx];
+  /* The caps are state now, not narration: at the mailbox cap the
+     send is refused and the draft stays in Approvals for tomorrow. */
+  const before = sendCounts();
+  if (before.mailbox >= MAILBOX_CAP) {
+    narrate(`Today's mailbox cap is reached — ${before.mailbox} of ${MAILBOX_CAP} sends used. The real programme stops the wave here rather than risk the mailbox, so this draft stays in Approvals; the counters reset tomorrow.`, "log-refusal");
+    return;
+  }
   const ta = $("#draft-" + id);
   const finalText = ta ? ta.value.trim() : a.text;
   state.approvals.splice(idx, 1);
@@ -645,7 +834,9 @@ async function approveApproval(id) {
     updateBadges();
     tick();
     recordTouch("reply", t.name);
-    narrate(`Reply sent to ${t.name}. It's in the thread now — you can scroll up and check it.`, "log-done");
+    const c = recordSend(false);
+    narrate(`Reply sent to ${t.name}. It's in the thread now — you can scroll up and check it. (${c.mailbox} of ${MAILBOX_CAP} sends used today.)`, "log-done");
+    offerNudge({ personId: t.id, name: t.name, org: t.org, fit: "" });
   } else {
     const q = state.queue.find(x => x.id === a.refId);
     if (q) q.status = "sent";
@@ -655,9 +846,11 @@ async function approveApproval(id) {
     await agentTouch(q ? $(`[data-queue="${q.id}"]`) : null, `You approved it. Sending to ${a.toName} at ${a.org}…`);
     tick();
     recordTouch(a.move || "outreach", a.toName);
-    narrate(`Sent to ${a.toName}. That's send number ${state.sentCount} this session.`, "log-done");
-    narrate("The real programme spaces sends out and caps each mailbox at 90 a day — Reach keeps that pace instead of blasting the whole queue at once.");
+    const c = recordSend(true);
+    narrate(`Sent to ${a.toName}. That's send number ${state.sentCount} this session — ${c.mailbox} of ${MAILBOX_CAP} sends used today, ${c.cold} of ${COLD_CAP} cold. Reach keeps the programme's pace instead of blasting the whole queue at once.`, "log-done");
+    offerNudge({ personId: a.refId, name: a.toName, org: a.org, fit: (q && q.fit) || "" });
   }
+  focusAfterDecision();
 }
 
 function skipApproval(id) {
@@ -675,10 +868,26 @@ function skipApproval(id) {
 
 /* ---------------- the three demo flows ---------------- */
 
+let flowReturnFocus = null;
+
 function setBusy(b) {
+  if (b) flowReturnFocus = document.activeElement;
   state.busy = b;
   $$(".flow-btn, .mission-btn, #next-action-btn, #studio-generate").forEach(btn => { btn.disabled = b; });
-  if (!b) renderToday();
+  if (!b) {
+    renderToday();
+    /* Focus returns to a sensible place: the control that launched
+       the flow if it is still on the page, otherwise the tab of the
+       view the flow left you on. */
+    if (flowReturnFocus && flowReturnFocus !== document.body && document.contains(flowReturnFocus)) {
+      flowReturnFocus.focus();
+    } else {
+      const tabName = state.activeView === "thread" ? "messages" : state.activeView;
+      const tab = $(`.tab[data-view="${tabName}"]`);
+      if (tab) tab.focus();
+    }
+    flowReturnFocus = null;
+  }
 }
 
 async function flowReply() {
@@ -713,7 +922,7 @@ async function flowReply() {
     }
     narrate("Drafting a reply that answers it…");
     await wait(900);
-    addApproval("reply", t.id, t.name, t.org, t.draft);
+    addApproval("reply", t.id, t.name, t.org, t.draft, "", "Seed demo data — staged conversation");
     switchView("approvals");
     narrate(`Draft written and parked in Approvals. Nothing sends until you approve the exact text — you can edit it first, or have it read aloud with the Listen button.`, "log-done");
   } finally {
@@ -750,7 +959,7 @@ async function flowQueue() {
       await wait(900);
       q.status = "drafted";
       renderQueue();
-      addApproval("outreach", q.id, q.name, q.org, q.draft || generateDraft(q, q.move || "follow-up"), q.move || "follow-up");
+      addApproval("outreach", q.id, q.name, q.org, q.draft || generateDraft(q, q.move || "follow-up"), q.move || "follow-up", provenanceOf(q));
       made += 1;
       narrate(`Draft for ${q.name} is in Approvals.`);
     }
@@ -823,7 +1032,7 @@ async function flowDraftOne(id) {
     await wait(900);
     q.status = "drafted";
     renderQueue();
-    addApproval("outreach", q.id, q.name, q.org, q.draft || generateDraft(q, q.move || "follow-up"), q.move || "follow-up");
+    addApproval("outreach", q.id, q.name, q.org, q.draft || generateDraft(q, q.move || "follow-up"), q.move || "follow-up", provenanceOf(q));
     switchView("approvals");
     narrate(`Draft for ${q.name} is in Approvals. Read it, edit it, approve it — or copy it into a real app instead.`, "log-done");
   } finally {
@@ -852,6 +1061,12 @@ async function flowListen() {
       lines.push(`${state.approvals.length} draft${state.approvals.length === 1 ? "" : "s"} waiting for your decision:`);
       state.approvals.forEach(a => lines.push(`For ${a.toName}: ${approvalCurrentText(a).split(/(?<=[.!?])\s/)[0]}`));
     }
+    const dueLines = dueNudges();
+    if (dueLines.length) {
+      lines.push(`Follow-ups due: ${dueLines.length} — ${dueLines.map(n => n.name).join("; ")}.`);
+    }
+    const countsNow = sendCounts();
+    lines.push(`Sends today: ${countsNow.mailbox} of ${MAILBOX_CAP} from this mailbox, ${countsNow.cold} of ${COLD_CAP} cold.`);
     lines.push(`Touches today: ${store.day.touches} of 3.`);
     narrate("Listen mode — reading your day aloud, in order.", "log-done");
     narrateSilent = true;
@@ -1013,7 +1228,8 @@ $("#composer-form").addEventListener("submit", e => {
   renderThread();
   renderThreads();
   updateBadges();
-  narrate("You sent that one yourself, straight from the composer.");
+  const c = recordSend(false);
+  narrate(`You sent that one yourself, straight from the composer. (${c.mailbox} of ${MAILBOX_CAP} sends used today.)`);
 });
 
 /* ---------------- Today wiring: next action + missions ---------------- */
@@ -1060,6 +1276,91 @@ $("#person-form").addEventListener("submit", e => {
   else narrate(`${name} is in your queue, saved on this phone. Tap “Draft” on their card, or let the Next best action find them.`, "log-done");
 });
 
+/* ---------------- Import your people ----------------
+   Paste a list; it is parsed entirely on this device and nothing
+   is uploaded anywhere. One person per line:
+     Name
+     Name, a note about them
+     name,org,note            (CSV)
+   A leading "!" marks the person do-not-contact. Names already in
+   the queue are flagged as duplicates and always skipped. */
+
+let importRows = [];
+
+function parseImport(text) {
+  const rows = [];
+  const seen = new Set(state.queue.map(q => q.name.trim().toLowerCase()));
+  String(text || "").split(/\r?\n/).forEach(raw => {
+    let line = raw.trim();
+    if (!line) return;
+    let dnc = false;
+    if (line.startsWith("!")) { dnc = true; line = line.slice(1).trim(); }
+    if (!line) return;
+    const parts = line.split(",").map(s => s.trim());
+    const name = parts[0] || "";
+    if (!name) return;
+    let org = "", note = "";
+    if (parts.length >= 3) { org = parts[1]; note = parts.slice(2).join(", "); }
+    else if (parts.length === 2) { note = parts[1]; }
+    const key = name.toLowerCase();
+    const dupe = seen.has(key);
+    if (!dupe) seen.add(key);
+    rows.push({ name, org, note, dnc, dupe, include: !dupe });
+  });
+  return rows;
+}
+
+function renderImportPreview() {
+  const wrap = $("#import-preview");
+  const list = $("#import-list");
+  if (!wrap || !list) return;
+  if (!importRows.length) { wrap.hidden = true; list.innerHTML = ""; return; }
+  wrap.hidden = false;
+  list.innerHTML = importRows.map((r, i) => `
+    <li class="import-row${r.dupe ? " import-dupe" : ""}">
+      <label class="import-main">
+        <input type="checkbox" data-import-include="${i}" ${r.include && !r.dupe ? "checked" : ""} ${r.dupe ? "disabled" : ""}>
+        <span><strong>${escapeHtml(r.name)}</strong>${r.org ? ` · ${escapeHtml(r.org)}` : ""}${r.note ? `<span class="import-note">${escapeHtml(r.note)}</span>` : ""}</span>
+      </label>
+      ${r.dupe
+        ? `<span class="import-badge">Already in your queue — skipped</span>`
+        : `<label class="import-dnc"><input type="checkbox" data-import-dnc="${i}" ${r.dnc ? "checked" : ""}> Do not contact</label>`}
+    </li>`).join("");
+  $$("[data-import-include]", list).forEach(cb => cb.addEventListener("change", () => { importRows[Number(cb.dataset.importInclude)].include = cb.checked; }));
+  $$("[data-import-dnc]", list).forEach(cb => cb.addEventListener("change", () => { importRows[Number(cb.dataset.importDnc)].dnc = cb.checked; }));
+}
+
+$("#import-preview-btn").addEventListener("click", () => {
+  importRows = parseImport($("#import-text").value);
+  renderImportPreview();
+  if (!importRows.length) { narrate("Nothing to import yet — paste one person per line: a name, then an optional note after a comma."); return; }
+  const fresh = importRows.filter(r => !r.dupe).length;
+  narrate(`Parsed ${importRows.length} line${importRows.length === 1 ? "" : "s"} right here on this phone — nothing was uploaded anywhere. ${fresh} new, ${importRows.length - fresh} already in your queue. Check the rows, mark anyone do-not-contact, then add them.`);
+});
+
+$("#import-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const chosen = importRows.filter(r => r.include && !r.dupe);
+  if (!chosen.length) { narrate("No new people selected — duplicates are always skipped, and unchecked rows stay out."); return; }
+  chosen.forEach((r, i) => {
+    state.queue.push({
+      id: "u-" + Date.now().toString(36) + "-" + i,
+      name: r.name, org: r.org || "—", fit: r.note || "", move: "follow-up",
+      suppressed: !!r.dnc,
+      suppressReason: r.dnc ? "You marked this person do-not-contact at import." : "",
+      draft: "", status: r.dnc ? "suppressed" : "waiting", user: true, imported: true
+    });
+  });
+  persistPeople();
+  renderQueue();
+  populateStudioPeople();
+  importRows = [];
+  renderImportPreview();
+  $("#import-text").value = "";
+  switchView("queue");
+  narrate(`Imported ${chosen.length} ${chosen.length === 1 ? "person" : "people"} into your queue — parsed and stored on this phone only. Reach drafts where a note gives it context, and never for anyone marked do-not-contact.`, "log-done");
+});
+
 /* ---------------- Draft studio ---------------- */
 
 function populateStudioPeople() {
@@ -1075,17 +1376,33 @@ $("#studio-generate").addEventListener("click", () => {
   narrateUser(`Draft a ${MOVE_LABELS[move] || "message"} for ${person.name}`);
   if (!person.fit) { narrate(`Holding ${person.name} — no context on record, and the studio won't invent one.`); return; }
   const text = generateDraft(person, move);
-  addApproval("studio", person.id, person.name, person.org, text, move);
+  addApproval("studio", person.id, person.name, person.org, text, move, provenanceOf(person));
   switchView("approvals");
   narrate(`Studio draft for ${person.name} is in Approvals — built only from what's on record, in your ${store.profile.tone || "Warm"} tone. Approve it here, or copy it into a real app.`, "log-done");
 });
 
 /* ---------------- Profile: make it yours + trust controls ---------------- */
 
+/* Text size (100 / 125 / 150%) — persisted in the profile and
+   applied to the whole page, panel and stage alike. */
+function applyTextSize() {
+  const pct = Number(store.profile.textSize || "100");
+  const root = document.documentElement;
+  if (pct === 100) {
+    root.style.fontSize = "";
+    document.body.style.fontSize = "";
+  } else {
+    root.style.fontSize = pct + "%";
+    document.body.style.fontSize = (16 * pct / 100) + "px";
+  }
+}
+
 function fillProfileForm() {
   $("#profile-name").value = store.profile.name || "";
   $("#profile-role").value = store.profile.role || "";
   $("#profile-tone").value = store.profile.tone || "Warm";
+  const ts = $("#profile-textsize");
+  if (ts) ts.value = store.profile.textSize || "100";
   $("#profile-signoff").value = store.profile.signoff || "";
   $("#profile-intention").value = store.profile.intention || "Keep in touch with people who matter";
 }
@@ -1096,10 +1413,12 @@ $("#profile-form").addEventListener("submit", e => {
     name: $("#profile-name").value.trim(),
     role: $("#profile-role").value.trim(),
     tone: $("#profile-tone").value,
+    textSize: $("#profile-textsize") ? $("#profile-textsize").value : (store.profile.textSize || "100"),
     signoff: $("#profile-signoff").value.trim(),
     intention: $("#profile-intention").value
   };
   persist();
+  applyTextSize();
   renderToday();
   narrate(storageOK
     ? `Saved — on this phone only. New drafts will sound like you: ${store.profile.tone} tone${store.profile.signoff ? `, signed “${store.profile.signoff}”` : ""}.`
@@ -1108,10 +1427,12 @@ $("#profile-form").addEventListener("submit", e => {
 
 $("#export-btn").addEventListener("click", () => {
   const payload = {
-    exportedFrom: "Reach v2 (this phone, local data only)",
+    exportedFrom: "Reach v2.1 (this phone, local data only)",
     profile: store.profile,
     people: state.queue.filter(q => q.user),
     savedDrafts: state.saved,
+    followUps: store.nudges || [],
+    sendsToday: sendCounts(),
     history: store.history
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -1129,6 +1450,7 @@ $("#export-btn").addEventListener("click", () => {
 $("#reset-demo-btn").addEventListener("click", () => {
   store.people = [];
   store.saved = [];
+  store.nudges = [];
   store.day = freshDay();
   store.history = [];
   persist();
@@ -1152,6 +1474,7 @@ renderApprovals();
 updateBadges();
 populateStudioPeople();
 fillProfileForm();
+applyTextSize();
 renderToday();
 switchView("today");
 narrate("Reach is ready. Never let a warm connection go cold — that's the whole idea.");

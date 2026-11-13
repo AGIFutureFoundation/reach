@@ -67,6 +67,7 @@
             <span class="next-action-label" id="next-action-label">…</span>
             <span class="next-action-sub" id="next-action-sub"></span>
           </button>
+          <p class="caps-line" id="caps-line">Sends today: 0 of 90 per mailbox · 0 of 250 cold. The programme's real caps — counted, not narrated.</p>
           <p class="today-clear" id="today-clear" hidden>You're clear — every warm connection is warm. ✨</p>
           <div class="missions" role="group" aria-label="Today's missions">
             <button type="button" class="mission-btn" data-mission="reply">
@@ -81,6 +82,11 @@
               <span class="mission-title">Reconnect</span>
               <span class="mission-sub" id="mission-reconnect-count">—</span>
             </button>
+          </div>
+          <div class="followups" id="followups-block" hidden>
+            <h3 class="followups-title">Due follow-ups</h3>
+            <p class="view-intro">Nudges you scheduled, due now. One tap drafts the follow-up from what's on record.</p>
+            <ul class="followups-list" id="followups-list"></ul>
           </div>
           <button type="button" class="text-btn" id="today-add-btn">Add someone you don't want to lose →</button>
           <p class="today-note">Seed people on this stage are fictional. People
@@ -137,11 +143,29 @@
             </label>
             <button type="submit" class="form-submit">Add to my queue</button>
           </form>
+          <form class="person-form import-form" id="import-form">
+            <h3>Import your people</h3>
+            <p class="form-note">Paste a list — one person per line:
+              <code>Name</code>, <code>Name, a note about them</code>, or CSV
+              <code>name,org,note</code>. Start a line with <code>!</code> to mark that
+              person do-not-contact. Everything is parsed right here, on this
+              phone — <strong>nothing is uploaded anywhere</strong>.</p>
+            <label for="import-text">Your list</label>
+            <textarea id="import-text" rows="5" placeholder="Ada Osei, Met at the spring workshop; runs the tool library&#10;Robin Vale, North Pier Books, Asked about the winter reading list&#10;! Someone who asked not to be contacted"></textarea>
+            <button type="button" class="form-submit" id="import-preview-btn">Preview import</button>
+            <div id="import-preview" hidden>
+              <ul class="import-list" id="import-list"></ul>
+              <button type="submit" class="form-submit">Add these people</button>
+            </div>
+          </form>
         </section>
 
         <section id="view-approvals" class="view" aria-label="Approvals" hidden>
           <p class="view-intro">Nothing sends without you. Read the exact draft,
-            edit it if you like, then approve — or copy it into a real app.</p>
+            edit it if you like, then approve — or copy it into a real app.
+            Keyboard: focus a card, then <strong>A</strong> approve ·
+            <strong>C</strong> copy · <strong>S</strong> share ·
+            <strong>↑ ↓</strong> move between cards.</p>
           <div id="approval-list"></div>
           <p class="empty-note" id="approvals-empty">No drafts waiting. Ask Reach to
             reply to a message or work the outreach queue.</p>
@@ -255,6 +279,12 @@
           <option>Direct</option>
           <option>Playful</option>
         </select>
+        <label for="profile-textsize">Text size</label>
+        <select id="profile-textsize">
+          <option value="100">Standard (100%)</option>
+          <option value="125">Large (125%)</option>
+          <option value="150">Extra large (150%)</option>
+        </select>
         <label for="profile-signoff">Your sign-off</label>
         <input id="profile-signoff" type="text" autocomplete="off" placeholder="e.g. — Sam from Bayview">
         <label for="profile-intention">What Reach is for, for you</label>
@@ -273,6 +303,8 @@
         <button type="button" class="mini-btn mini-btn-danger" id="erase-btn">Erase my data</button>
       </div>
     </section>
+
+    <div class="nudge-offer" id="nudge-offer" hidden></div>
 
     <h3 class="log-heading">What Reach is doing</h3>
     <ol class="action-log" id="action-log" role="log" aria-live="polite" aria-label="Reach action log"></ol>
@@ -295,5 +327,18 @@
 </footer>
 
 <script src="app.js"></script>
+<script>
+/* Progressive enhancement only: the app is complete without this.
+   The service worker caches the app shell (same-origin) so Reach
+   opens offline after the first visit. If registration is blocked
+   or unsupported, nothing changes — the page works exactly as before. */
+if ("serviceWorker" in navigator) {
+  try {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw.js").catch(function () { /* optional */ });
+    });
+  } catch (e) { /* app works without it */ }
+}
+</script>
 </body>
 </html>

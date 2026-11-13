@@ -406,3 +406,50 @@ above), console API verification, and any real sending — which
 stays exactly where today's programme keeps it: behind approvals,
 inside caps, on the record. Holding → device assignments are
 **settled** (approved 2026-11-13, recorded above and in the app).
+
+## The operating programme — FLEET-OPS.md (summary)
+
+*Mike's order, 2026-11-13 12:00 PT ("make full use of the new
+phones to do research and outreach… make this an impressive use
+of the networks and phones") is specced in full in
+**`FLEET-OPS.md`** in this folder. One-page summary:*
+
+- **Capacity.** Three working desk phones today (inventory and
+  assignments above), one demo phone, one reserve. The other
+  $149-plan console accounts Mike is spinning up (Foundation x@
+  and AGI Corp x@agicorp.network, both mid-setup) add phones only
+  through the growth rule — **inventory row verified here →
+  assignment approved by Mike → one-item pilot** — and their
+  planned roles are second-desk capacity, regional spares, and
+  research-only endpoints, in that order. No device count is
+  asserted for them anywhere until a device verifies.
+- **Research machine.** The phones are research endpoints in
+  agent-net: signed packets, claim-by-commit per desk, Tavily-
+  shaped queries, then the phone opens the actual page the claim
+  depends on; every task traces in LangSmith project `reach`;
+  findings write back labelled VERIFIED / REPORTED / HYPOTHESIS.
+  Fellowship desk: verification passes over the 15 city guides'
+  listings. Foundation desk: partner/funder research briefs
+  (filings may rank, never source). BuilderSpace desk: employer
+  and lab discovery for tour towns — the robotics activation
+  lane is specced in `ROBOTICS-FLEET-REVIEW.md` in the robotics
+  training package.
+- **Outreach machine.** The wiring spec above, operated: gate-
+  approved wave items only, caps programme-wide and unchanged,
+  inbox triage and reply-watch per desk mailbox, write-backs to
+  suppression and the people graph, human handoffs per the voice
+  rule.
+- **Cadence and proof.** 07:00 brief → research block → batched
+  approval sitting → execution + triage → close-of-day
+  reconciliation; weekly city pass, robotics sprint, and fleet
+  health pass. Metrics are counted from logs (tasks completed,
+  verified findings, triage latency, write-back completeness —
+  target 100%, suppression integrity — target zero) and never
+  inflated; demo-phone numbers are labelled booth numbers.
+- **Readiness, stated plainly.** Live today: Reach v2.5, the
+  verified fleet, the local bridge in booth configuration, and
+  the programme machinery. Waiting on Mike: the console login
+  saves (Fellowship account first). Waiting on verification: the
+  hosted console API surface — still UNVERIFIED, `consoleApiBase`
+  still empty. Go-live runs research first, then one pilot item
+  per desk, then wave work — per the checklist above.

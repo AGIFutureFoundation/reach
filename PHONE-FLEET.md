@@ -19,12 +19,15 @@ for the fleet design; the phoneuse fork's fleet doc mirrors it.*
   Foundation, BuilderSpace — are **desks in Reach** (Holding Mode
   queues, profiles, missions, handoffs) that **route to phones** in
   the fleet. A desk is a role, not a device.
-- **Assignments are PENDING.** Which physical phone serves which
-  holding is **not asserted anywhere in this document or in the
-  app**. The console inventory (device names, IDs, status) is being
-  pulled now; assignments land from that inventory and are recorded
-  in `FLEET_CONFIG.phoneuse.consoleDevices` and in each role card's
-  **Fleet device** row. Until then every assignment reads PENDING.
+- **Assignments are APPROVED.** Mike ruled on the assignment on
+  2026-11-13 (11:51 PT): Phone 1 → Fellowship, Phone 2 →
+  Foundation, Phone 3 → BuilderSpace, Phone 4 → Reach demo/booth,
+  Phone 5 → reserve. The mapping is recorded in the inventory
+  below, in each role card's **Fleet device** row, and in the app
+  itself (`FLEET_CONFIG.phoneuse.consoleDevices` in `app.js`), and
+  Holding Mode now names each desk's phone (Fellowship ↔ Phone 1,
+  Foundation ↔ Phone 2, BuilderSpace ↔ Phone 3; the demo phone
+  serves Judge Mode).
 - **Headroom is a feature.** Five phones for three desks leaves
   capacity for a booth/demo device and for the busiest desk to gain
   a second phone — decided from the inventory and the load, not
@@ -32,18 +35,37 @@ for the fleet design; the phoneuse fork's fleet doc mirrors it.*
 
 ### Fleet inventory
 
-*Rows land here as the console inventory verifies them. A device
-listed here is a verified fleet device; its holding assignment is
-a separate step and stays PENDING until the full five-device
-inventory is in.*
+*Rows land here as the inventory verifies them. A device listed
+here is a verified fleet device; holding assignments were approved
+by Mike on 2026-11-13 (11:51 PT) and are recorded in the table.*
 
 | # | Device | Phone ID | Paid until | Source | Holding assignment |
 |---|---|---|---|---|---|
-| 1 | Google Pixel 7 Pro (US) | `ACP6BC9P8ZEML2Z1` — [console](https://console.phoneuse.com/devices/ACP6BC9P8ZEML2Z1) | 13 Dec 2026 | VERIFIED — vendor setup email (Abdulla, CEO of PhoneUse), relayed by Mike 2026-11-13 11:49 PT | **PENDING** — waits for the full inventory |
-| 2 | Google Pixel 7 Pro (US) | `ACP6BD9Q64XX8XE9` — [console](https://console.phoneuse.com/devices/ACP6BD9Q64XX8XE9) | 13 Dec 2026 | VERIFIED — vendor setup email, relayed by Mike 2026-11-13 11:49 PT | **PENDING** — waits for the full inventory |
-| 3 | Google Pixel 7 Pro (US) | `ACP6B99O2IWFKAA4` | 13 Dec 2026 | VERIFIED — vendor setup email, relayed by Mike 2026-11-13 11:50 PT | **PENDING** — waits for the full inventory |
-| 4 | Google Pixel 7 Pro (US) | `ATP68K8IGMSLAIBB` | 13 Dec 2026 | VERIFIED — vendor setup email, relayed by Mike 2026-11-13 11:50 PT | **PENDING** — waits for the full inventory |
-| 5 | — | — | — | PENDING console inventory | PENDING |
+| 1 | Google Pixel 7 Pro (US) | `ACP6BC9P8ZEML2Z1` — [console](https://console.phoneuse.com/devices/ACP6BC9P8ZEML2Z1) | 13 Dec 2026 | VERIFIED — vendor setup email (Abdulla, CEO of PhoneUse), relayed by Mike 2026-11-13 11:49 PT | **Fellowship phone** (approved) |
+| 2 | Google Pixel 7 Pro (US) | `ACP6BD9Q64XX8XE9` — [console](https://console.phoneuse.com/devices/ACP6BD9Q64XX8XE9) | 13 Dec 2026 | VERIFIED — vendor setup email, relayed by Mike 2026-11-13 11:49 PT | **Foundation phone** (approved) |
+| 3 | Google Pixel 7 Pro (US) | `ACP6B99O2IWFKAA4` | 13 Dec 2026 | VERIFIED — vendor setup email, relayed by Mike 2026-11-13 11:50 PT | **BuilderSpace phone** (approved) |
+| 4 | Google Pixel 7 Pro (US) | `ATP68K8IGMSLAIBB` | 13 Dec 2026 | VERIFIED — vendor setup email, relayed by Mike 2026-11-13 11:50 PT | **Reach demo / booth phone** (approved) |
+| 5 | Google Pixel 7 Pro (US) | `ACP6BD9PTE0T2ASG` | 13 Dec 2026 | VERIFIED — vendor setup email, relayed by Mike 2026-11-13 11:50 PT | **Reserve** — unassigned (approved) |
+
+**Inventory status: COMPLETE and VERIFIED** (2026-11-13) — all five
+devices are Google Pixel 7 Pro (US), all paid until 13 Dec 2026,
+all on the agent@agifellowship.church console account, each from
+the vendor's own setup email.
+
+### Assignment — APPROVED by Mike, 2026-11-13 11:51 PT
+
+| Phone | Role |
+|---|---|
+| Phone 1 — `ACP6BC9P8ZEML2Z1` | **Fellowship phone** — runs the Fellowship desk and its mailbox |
+| Phone 2 — `ACP6BD9Q64XX8XE9` | **Foundation phone** — runs the Foundation desk and its mailbox |
+| Phone 3 — `ACP6B99O2IWFKAA4` | **BuilderSpace phone** — runs the BuilderSpace desk and its mailbox |
+| Phone 4 — `ATP68K8IGMSLAIBB` | **Reach demo / booth phone** — judging demos, the hackathon table, evaluation units; serves Judge Mode |
+| Phone 5 — `ACP6BD9PTE0T2ASG` | **Reserve** — unassigned; stays cold until rotated in |
+
+The three desks take the first three phones in inventory order; a
+dedicated demo phone keeps judges' hands off a working outreach
+device; and a reserve keeps the fleet honest — five phones is
+headroom, not five queues.
 
 ## The system in one paragraph
 
@@ -79,7 +101,7 @@ to — assignment PENDING, per the fleet reality above.*
 | | |
 |---|---|
 | **Holding** | AGI Fellowship — California nonprofit religious corporation (filed 2026-05-13). A deep hub for all faiths and a resource for communities in need. |
-| **Fleet device** | **PENDING** — assigned from the console inventory (see Fleet reality). |
+| **Fleet device** | **Phone 1** — Google Pixel 7 Pro (US), `ACP6BC9P8ZEML2Z1` (assignment approved by Mike, 2026-11-13). |
 | **Domain** | agifellowship.church |
 | **Reach profile name** | **AGI Fellowship — community desk** |
 | **Mission** | Community and city-guide outreach: keep the shelter, food-bank, pantry, and gathering partners behind the Fellowship's 15 city guides warm, so the guides stay accurate and the Fellowship stays useful to people in need. Thank-yous to partners, guide-update checks, invitations to community tables. |
@@ -94,7 +116,7 @@ to — assignment PENDING, per the fleet reality above.*
 | | |
 |---|---|
 | **Holding** | AGI Future Foundation — California Nonprofit Public Benefit Corporation (filed 2026-04-24). The stewardship hub of the network: it manages companies to mission standards. |
-| **Fleet device** | **PENDING** — assigned from the console inventory. The Foundation holds no console account of its own; its desk routes to a phone in the Fellowship-account fleet. |
+| **Fleet device** | **Phone 2** — Google Pixel 7 Pro (US), `ACP6BD9Q64XX8XE9` (assignment approved by Mike, 2026-11-13). The Foundation holds no console account of its own; its phone sits in the Fellowship-account fleet. |
 | **Domain** | agifuturefoundation.org |
 | **Reach profile name** | **AGI Future Foundation — partnerships desk** |
 | **Mission** | Partner and funder warmth: answer every programme officer's specific ask on time (the one-pager, the outcomes summary, the compliance pack), keep commitments exact, and keep first replies human-adjacent — every draft offers the human connection up front. |
@@ -109,7 +131,7 @@ to — assignment PENDING, per the fleet reality above.*
 | | |
 |---|---|
 | **Holding** | BuilderSpace — the network's builder tour: it brings the coding and startup world to tour towns, bridges the tech divide, and matches builders with employers. |
-| **Fleet device** | **PENDING** — assigned from the console inventory. |
+| **Fleet device** | **Phone 3** — Google Pixel 7 Pro (US), `ACP6B99O2IWFKAA4` (assignment approved by Mike, 2026-11-13). |
 | **Domain** | builderspace.tech |
 | **Reach profile name** | **BuilderSpace — tour desk** |
 | **Mission** | Builder and employer outreach in the tour towns: venues and meetup organisers who host sessions, community editors who list them, and the employers who meet builders at the demo table. |
@@ -144,6 +166,67 @@ Every phone runs the same day; only the queue and voice differ.
    replied, refused — lands in the programme's records the same day
    (the wiring spec below), so tomorrow's queue starts from truth.
 
+## Operating model — the phones run the mailboxes
+
+*Mike's order, 2026-11-13 11:51 PT: "set these up and use them to
+manage the outreach and multiple emails." This section is the
+spec for that order. It changes no live outreach by itself — the
+programme's own jobs keep running exactly as they do today until
+the go-live checklist at the end of this document is worked.*
+
+Each working phone is its holding's **mailbox operator**:
+
+| Phone | Desk | Mailbox it manages |
+|---|---|---|
+| Phone 1 | Fellowship | **agent@agifellowship.church** (lane L1) |
+| Phone 2 | Foundation | **x@agifuturefoundation.org** (lane L2) |
+| Phone 3 | BuilderSpace | **x@agicorp.network** (the network/BuilderSpace desk mailbox) |
+| Phone 4 | Demo / booth | No mailbox. Runs Reach at the booth; serves Judge Mode. |
+| Phone 5 | Reserve | No mailbox. Cold until rotated in. |
+
+What "manages" means, per phone, inside the existing rails:
+
+1. **Queue staging.** The phone stages its holding's next wave
+   items from the programme's wave packs into its Reach queue —
+   items already built, personalised, and suppression-checked by
+   the programme. Staging is copying an approved queue onto the
+   desk, never creating one.
+2. **Approval sittings.** Drafts are prepared on the phone and sit
+   for the human's approval in Reach — the exact text, the tap,
+   the same law. A sitting is batched (a wave's drafts in one
+   pass) so the human's time is spent deciding, not waiting.
+3. **Inbox triage.** The phone reads its holding's mailbox and
+   sorts: hard bounce → suppression write-back; unsubscribe →
+   suppression everywhere; reply → the reply-watch queue;
+   human asked for → handoff flag to the holding's human
+   (Fellowship steward / Russell / Mike) and out of automation;
+   everything else → a drafted reply in the holding's voice,
+   waiting for approval like any other draft.
+4. **Reply-watch.** The phone carries its holding's half of the
+   reply-watch duty (today: `foundation-reply-watch` and
+   `fellowship-press-reply-watch`, hourly): first replies get a
+   gracious, informative draft from AGI's perspective, always
+   offering the human connection — and anyone who asks for a
+   human leaves the automated thread the same run.
+
+**The rails do not move.** The wave packs remain the system of
+record for who may be contacted and why. Caps stay programme-wide:
+**90/day per mailbox, ≤250 cold/day across the programme** — three
+working phones divide the caps, they never multiply them, and a
+phone's staged work counts against its own mailbox's cap.
+Suppression is law on every phone. Social work, if a phone ever
+carries it, stays inside the pacing law. A phone manages and
+executes **approved** work; it does not originate campaigns, widen
+caps, or invent queues.
+
+**The other two phones.** Phone 4 (demo/booth) runs Reach for
+judges and visitors — the demo data only, no mailbox, no queues —
+and serves Judge Mode's tour. Phone 5 (reserve) stays cold:
+charged, updated, and unassigned until a working phone fails or
+the busiest desk earns a second device, at which point it rotates
+in under the same rails and takes that desk's slot wholesale —
+queues are never split across two phones mid-wave.
+
 ## The PhoneUse layer: verified and UNVERIFIED
 
 The fleet's execution hands are PhoneUse's. Two surfaces exist, and
@@ -160,21 +243,20 @@ this design keeps them strictly separate:
   the booth setup. Reach v2.4 already implements this hand-off: the
   POSTed task is the approval card's exact text, byte-for-byte, and
   the scoped key lives in page memory only.
-- **The hosted console — account known, surface UNVERIFIED.** The
-  console at console.phoneuse.com is where the fleet lives: **one
-  account, agent@agifellowship.church, holding five devices** (set
-  up by Mike, 2026-11-13). A console review is pulling the device
-  inventory — names, IDs, status — in parallel. **Until that
-  inventory lands, no device assignment, console API base, or
-  endpoint is claimed anywhere in Reach or in this document.** In
-  the code, the console surface is configuration, not literals:
-  `FLEET_CONFIG` in `app.js` carries the account and the device
-  count as known facts, `consoleApiBase` empty (UNVERIFIED), and a
-  `consoleDevices` slot per holding, empty and marked PENDING; the
-  harness asserts the slots ship unset. When the inventory relays
-  the facts, assignments land in those slots and in the role cards
-  above, and this section is updated with a dated note — the design
-  does not change, only the config fills in.
+- **The hosted console — account and inventory known, surface
+  UNVERIFIED.** The console at console.phoneuse.com is where the
+  fleet lives: **one account, agent@agifellowship.church, holding
+  five devices** (set up by Mike, 2026-11-13; the five-device
+  inventory is verified above from the vendor's own setup emails;
+  the holding → device assignment was approved by Mike on
+  2026-11-13 and is recorded in the inventory, the role cards, and
+  the app). **No console API base or endpoint is claimed anywhere
+  in Reach or in this document.** In the code, the console surface
+  is configuration, not literals: `FLEET_CONFIG` in `app.js`
+  carries the account, the device count, and the approved
+  `consoleDevices` mapping as recorded facts, with `consoleApiBase`
+  still empty (UNVERIFIED) — device IDs are facts; an API surface
+  would be a claim, and it waits for verification.
 
 **Task addressing, once assignments land.** A phone task is
 addressed to exactly one holding's assigned device:
@@ -253,9 +335,9 @@ originates a queue, never widens one, and never re-times one.
    (Fellowship) items can only ever queue on the Fellowship desk;
    L2 (Foundation) items only on the Foundation desk. BuilderSpace
    items come from the tour's own records, not the email
-   programme's lanes. (Which physical phones those are is PENDING
-   the console inventory — the rule binds the desk, and the desk's
-   assignment binds the device.)
+   programme's lanes. (The desk → device mapping is the approved
+   assignment above: Fellowship → Phone 1, Foundation → Phone 2,
+   BuilderSpace → Phone 3.)
 2. **Suppression is checked twice**: once when the pack is built
    (programme gate) and again on the phone before drafting
    (Reach's rail). Either check can refuse; neither can override
@@ -295,10 +377,11 @@ originates a queue, never widens one, and never re-times one.
 
 ### Go-live checklist (for when Mike says go)
 
-1. Console inventory lands (five devices: names, IDs, status) →
-   record the holding → device assignments in the role cards and
-   in `FLEET_CONFIG.phoneuse.consoleDevices`; fill `consoleApiBase`
-   only if the review verifies a console API surface.
+1. ~~Mike rules on the assignment~~ — **done** (approved
+   2026-11-13 11:51 PT; recorded in the role cards and in
+   `FLEET_CONFIG.phoneuse.consoleDevices`). Remaining in this step:
+   fill `consoleApiBase` only if a console API surface is
+   verified.
 2. Scoped PhoneUse keys per phone, created per the fork's
    `create-key.py` pattern — one phone per key, with expiries;
    keys live in page memory / the Mac-side bridge, never in the
@@ -316,9 +399,10 @@ switcher, the three isolated slots with fictional starter sets and a
 complete demo flow each, per-holding brief and impact, the fleet
 beat in the Judge Mode tour, and this document.
 
-**Designed here, gated on facts and Mike's go:** holding → device
-assignments (console inventory in flight; PENDING everywhere they
-are referenced), live queue feeds from the wave packs (go-live
-checklist above), and any real sending — which stays exactly where
-today's programme keeps it: behind approvals, inside caps, on the
-record.
+**Designed here, gated on facts and Mike's go:** the mailbox
+operating model above (spec only in this build — no live outreach
+changes), live queue feeds from the wave packs (go-live checklist
+above), console API verification, and any real sending — which
+stays exactly where today's programme keeps it: behind approvals,
+inside caps, on the record. Holding → device assignments are
+**settled** (approved 2026-11-13, recorded above and in the app).

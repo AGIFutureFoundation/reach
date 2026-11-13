@@ -652,12 +652,15 @@ phones in that fleet: the **Fellowship desk** (community and
 city-guide outreach; human handoff: a Fellowship steward), the
 **Foundation desk** (partner and funder warmth; handoff: Russell
 Vacanti), and the **BuilderSpace desk** (builder and employer
-outreach in the tour towns; handoff: Mike). Which physical phone
-serves which holding is **PENDING** the console inventory and is
-asserted nowhere — assignments land in config when the inventory
-does. The full operating design — role cards, daily rhythm, the
-outreach wiring spec — is **PHONE-FLEET.md**. This section is the
-software design it ships with.
+outreach in the tour towns; handoff: Mike). The holding → device
+assignment is **approved by Mike** (2026-11-13 11:51 PT): Phone 1
+Fellowship, Phone 2 Foundation, Phone 3 BuilderSpace, Phone 4
+demo/booth (it serves Judge Mode), Phone 5 reserve — recorded in
+`FLEET_CONFIG` and named in the holding switcher. The full
+operating design — role cards, daily rhythm, the mailbox
+operating model, the outreach wiring spec — is
+**PHONE-FLEET.md**. This section is the software design it ships
+with.
 
 ### Slots, generalised
 
@@ -697,25 +700,24 @@ they are the programme's record, not a phone's.
 
 ### Config, not claims
 
-The hosted PhoneUse console's API surface was still UNVERIFIED
-when v2.5 shipped, and the device inventory was still being
-pulled, so the fleet's console addressing is **configuration, not
-code**: `FLEET_CONFIG` holds the verified local surface (from the
-fork), the known console facts (account
-agent@agifellowship.church, five devices), and deliberately empty
-console slots (`consoleApiBase`; one device id per holding,
-marked PENDING). The harness asserts the slots ship empty — a
-build that hard-coded an unverified endpoint or an assumed device
-assignment would fail its own tests. When the inventory lands, the
-facts fill the slots and the design is untouched.
+The hosted PhoneUse console's API surface is still UNVERIFIED,
+so the fleet's console addressing is **configuration, not code**:
+`FLEET_CONFIG` holds the verified local surface (from the fork),
+the known console facts (account agent@agifellowship.church,
+five devices), the approved holding → device mapping, and one
+deliberately empty slot — `consoleApiBase`, because an API base
+would be a claim, not a fact. The harness asserts the mapping
+matches Mike's approved assignment exactly and the API base ships
+unset — a build that hard-coded an unverified endpoint would fail
+its own tests.
 
 ### What v2.5 deliberately did not change
 
 The rails, the schema (still v3; `holdingId` additive), the pack
 behaviour byte-for-byte (pack narrations are unchanged; holding
 narrations are parallel text), the bridge, and the no-keys
-behaviour. The extended harness now runs **212 assertions, all
-green** — the 172 of v2.4 plus 40 covering holding isolation
+behaviour. The extended harness now runs **216 assertions, all
+green** — the 172 of v2.4 plus 44 covering holding isolation
 against the store, direct phone-to-phone hops, per-holding brief
 and impact, pack/holding interplay, reload persistence, and the
 config-slot invariant.

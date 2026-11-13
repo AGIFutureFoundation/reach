@@ -324,7 +324,7 @@ function currentPack() {
 
 const HOLDINGS = [
   {
-    id: "fellowship", label: "Fellowship", phoneLabel: "Fellowship phone", domain: "agifellowship.church",
+    id: "fellowship", label: "Fellowship", phoneLabel: "Fellowship phone", phone: "Phone 1", domain: "agifellowship.church",
     profileName: "AGI Fellowship — community desk",
     mission: "Community and city-guide outreach — keep the shelter, food, and gathering partners behind the Fellowship's city guides warm, so the guides stay accurate and the doors stay open to every faith.",
     handoff: "a Fellowship steward",
@@ -355,7 +355,7 @@ const HOLDINGS = [
     ]
   },
   {
-    id: "foundation", label: "Foundation", phoneLabel: "Foundation phone", domain: "agifuturefoundation.org",
+    id: "foundation", label: "Foundation", phoneLabel: "Foundation phone", phone: "Phone 2", domain: "agifuturefoundation.org",
     profileName: "AGI Future Foundation — partnerships desk",
     mission: "Partner and funder warmth — answer every programme officer's specific ask on time, and keep the Foundation's commitments exact.",
     handoff: "Russell Vacanti, the Foundation's co-founder",
@@ -386,7 +386,7 @@ const HOLDINGS = [
     ]
   },
   {
-    id: "builderspace", label: "BuilderSpace", phoneLabel: "BuilderSpace phone", domain: "builderspace.tech",
+    id: "builderspace", label: "BuilderSpace", phoneLabel: "BuilderSpace phone", phone: "Phone 3", domain: "builderspace.tech",
     profileName: "BuilderSpace — tour desk",
     mission: "Builder and employer outreach in the tour towns — venues, meetup organisers, and the employers who meet builders at the demo table.",
     handoff: "Mike, BuilderSpace's organiser",
@@ -426,14 +426,15 @@ function currentHolding() {
    from the fork (AGIFutureFoundation/phoneuse): API base, task
    endpoint, Bearer auth, origins allowlisted to its own web UI.
    The HOSTED console reality (Mike, 2026-11-13): ONE console
-   account — agent@agifellowship.church — holding FIVE devices.
-   The three holdings are Reach-side desks that route to phones;
-   which physical device serves which holding is PENDING the
-   console inventory, so the per-holding device IDs below are
-   empty config slots — assignments land from that inventory, and
-   the console API surface stays UNVERIFIED until the review
-   verifies it. Nothing here hard-codes a console endpoint or a
-   device assignment. */
+   account — agent@agifellowship.church — holding FIVE devices
+   (all Pixel 7 Pro US, paid until 13 Dec 2026; inventory verified
+   from the vendor's setup emails). The holding → device assignment
+   below is APPROVED by Mike (2026-11-13 11:51 PT): Phone 1 =
+   Fellowship, Phone 2 = Foundation, Phone 3 = BuilderSpace,
+   Phone 4 = Reach demo/booth (it serves Judge Mode), Phone 5 =
+   reserve. The console's API surface remains UNVERIFIED, so
+   consoleApiBase stays empty — the device IDs are recorded facts,
+   not an endpoint claim. */
 const FLEET_CONFIG = {
   phoneuse: {
     localBase: "http://127.0.0.1:8765",
@@ -442,7 +443,13 @@ const FLEET_CONFIG = {
     consoleAccount: "agent@agifellowship.church",
     consoleDeviceCount: 5,
     consoleApiBase: "", /* UNVERIFIED — intentionally unset */
-    consoleDevices: { fellowship: "", foundation: "", builderspace: "" } /* PENDING — filled from the console inventory */
+    consoleDevices: {
+      fellowship: "ACP6BC9P8ZEML2Z1",   /* Phone 1 — approved assignment */
+      foundation: "ACP6BD9Q64XX8XE9",   /* Phone 2 — approved assignment */
+      builderspace: "ACP6B99O2IWFKAA4", /* Phone 3 — approved assignment */
+      demo: "ATP68K8IGMSLAIBB",         /* Phone 4 — Reach demo / booth */
+      reserve: "ACP6BD9PTE0T2ASG"       /* Phone 5 — reserve, unassigned */
+    }
   }
 };
 
@@ -499,7 +506,7 @@ function renderHoldingBar() {
   $$("[data-holding]", wrap).forEach(b => b.addEventListener("click", () => setActiveHolding(b.dataset.holding || "")));
   if (holding) {
     active.hidden = false;
-    active.textContent = `${holding.phoneLabel} — running as ${holding.profileName}. ${holding.blurb} Human handoff: ${holding.handoff}. First up: ${holding.people[0].name} — tap “Draft” on their card and Reach runs the full flow: research → draft → your approval.`;
+    active.textContent = `${holding.phoneLabel} (${holding.phone}) — running as ${holding.profileName}. ${holding.blurb} Human handoff: ${holding.handoff}. First up: ${holding.people[0].name} — tap “Draft” on their card and Reach runs the full flow: research → draft → your approval.`;
   } else {
     active.hidden = true;
     active.textContent = "";

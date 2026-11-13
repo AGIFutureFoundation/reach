@@ -56,10 +56,11 @@ Everything below is enforced as behaviour, tested, not promised:
   name, mission, and human handoff — a Fellowship steward, Russell
   Vacanti, Mike — under one approval law. Houses never cross: a
   holding's queue can only hold its own people, and the brief and
-  impact panel count the active desk's own work. (Which physical
-  phone serves which holding is assigned from the console
-  inventory — PENDING in the config, by design.) The operating
-  design is [PHONE-FLEET.md](PHONE-FLEET.md).
+  impact panel count the active desk's own work. (Assignments
+  approved by Mike, 2026-11-13: Phone 1 Fellowship, Phone 2
+  Foundation, Phone 3 BuilderSpace, Phone 4 demo/booth, Phone 5
+  reserve — recorded in the app config.) The operating design is
+  [PHONE-FLEET.md](PHONE-FLEET.md).
 - **Draft studio, Listen mode, paste-import** — drafts only from
   what's on record; your list parsed on-device, uploaded nowhere.
 - **Copy / Share** — the honest bridge to real apps, in your hand.
@@ -111,7 +112,7 @@ request shapes, what the docs do and don't settle — is in
 
 A Node harness executes the real `app.js` + `integrations.js`
 against a DOM stub and asserts behaviour end to end:
-**212 assertions, all green** — the v2 core, the habit layer, the
+**216 assertions, all green** — the v2 core, the habit layer, the
 caps/provenance/import machinery, the sponsor adapters (live +
 fallback paths), the brief/impact/judge-mode/warmth surfaces,
 pack isolation proven against the store, the PhoneUse bridge's

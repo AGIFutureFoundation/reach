@@ -140,30 +140,31 @@ for exactly this. v2.5 turns them into a fleet:
   exists on the Foundation phone; the Fellowship phone has never
   heard of her. Houses never cross because a slot can only hold
   its own people — asserted in the harness, including the negative
-  space (40 fleet assertions).
+  space (44 fleet assertions).
 - **The brief and the proof follow the desk.** On a holding desk,
   the Morning Brief names the desk, its profile, its mission and
   its handoff, and the impact panel counts that desk's own
   touches, labelled as such. On “My people”, both behave exactly
   as before.
 - **Config, not claims.** The hosted console's API surface is
-  under review in parallel, so Reach hard-codes none of it: the
-  fleet config carries the verified local surface (from the fork)
-  and deliberately empty console slots — device IDs land as
-  configuration when the review reports, and the harness asserts
-  the slots ship empty. The full operating design — role cards,
-  daily rhythm, and the spec wiring the phones into the existing
-  outreach programme's waves, suppression law, and caps — is
-  **PHONE-FLEET.md**.
+  still UNVERIFIED, so Reach hard-codes none of it: the fleet
+  config carries the verified local surface (from the fork), the
+  verified device inventory, and Mike's approved assignment as
+  recorded facts — while the console API base stays deliberately
+  unset, and the harness asserts the mapping is exact and the API
+  base is empty. The full operating design — role cards, daily
+  rhythm, the mailbox operating model, and the spec wiring the
+  phones into the existing outreach programme's waves,
+  suppression law, and caps — is **PHONE-FLEET.md**.
 
 **The booth version:** three of the fleet's five phones on the
 table, three holdings at their desks, one approval law. Load each
 phone with its holding's desk, run the brief on one, a refusal on
 the second, an approval on the third — then try to load the
 Foundation's queue on the Fellowship desk, live, and let the
-architecture answer. (Which physical phone serves which holding
-is assigned from the console inventory — PENDING in the config,
-by design.)
+architecture answer. (Assignments approved by Mike today and
+recorded in the config: Phone 1 Fellowship, Phone 2 Foundation,
+Phone 3 BuilderSpace, Phone 4 runs this demo, Phone 5 reserve.)
 
 ## Sponsor stack — live (v2.2, new today)
 

@@ -132,29 +132,37 @@ and tested against the documented API; whether a given browser can
 reach the local API is an environment fact Reach reports, never a
 result it fakes.
 
-## The fleet — three hosted phones (v2.5)
+## The fleet — five hosted phones, three holding desks (v2.5)
 
-The PhoneUse console account (x@agifuturefoundation.org) holds
-**three hosted phones**, and v2.5's Holding Mode gives each a
-holding: Fellowship, Foundation, BuilderSpace. The operating
-design is **PHONE-FLEET.md**. What belongs in this review is the
-surface discipline:
+The PhoneUse console account **agent@agifellowship.church** holds
+**five hosted phones** (set up by Mike, 2026-11-13). v2.5's
+Holding Mode models the network's three holdings — Fellowship,
+Foundation, BuilderSpace — as Reach-side **desks** that route to
+phones in that fleet. Which physical phone serves which holding
+is **PENDING** the console inventory and is asserted nowhere. The
+operating design is **PHONE-FLEET.md**. What belongs in this
+review is the surface discipline:
 
 - **Verified (local):** everything in the PhoneUse section above —
   `GET /health`, `POST /api/ai/tasks`, Bearer scoped keys, the two
   allowlisted local origins. Reach's fleet configuration
   (`FLEET_CONFIG` in `app.js`) carries exactly this surface as
   `localBase` + `localTasksPath`.
+- **Known (console facts):** the account (agent@agifellowship
+  .church) and the device count (five) — carried in `FLEET_CONFIG`
+  as `consoleAccount` / `consoleDeviceCount`.
 - **UNVERIFIED (hosted console):** the console's own API — its base,
   its task endpoint shape, its device addressing — is **not
-  claimed** anywhere in Reach. A console review is inventorying it
-  in parallel; until it reports, `FLEET_CONFIG.phoneuse` carries
-  `consoleApiBase: ""` and a `consoleDevices` slot per holding,
-  all empty, and the harness asserts they ship empty (hf-05). The
-  design treats device IDs and console endpoints as **config that
-  lands later**, never as literals baked into the app.
-- **Addressing rule (design, pending the config):** a task is
-  addressed to exactly one holding's device, and the
+  claimed** anywhere in Reach. A console review is pulling the
+  device inventory in parallel; until it reports,
+  `FLEET_CONFIG.phoneuse` carries `consoleApiBase: ""` and a
+  `consoleDevices` slot per holding, all empty and marked
+  PENDING, and the harness asserts they ship empty (hf-05). The
+  design treats device IDs, assignments, and console endpoints as
+  **config that lands later**, never as literals baked into the
+  app.
+- **Addressing rule (design, pending the assignments):** a task is
+  addressed to exactly one holding's assigned device, and the
   holding → device mapping is part of the approval record, so a
   misaddressed task is visible before it runs.
 
@@ -174,7 +182,7 @@ surface discipline:
 4. **No keys, no change.** With the panel untouched, the app is
    behaviour-identical to v2.1 — the original assertion suites still
    pass untouched inside the extended harness, which at v2.5 runs
-   **208 assertions, all green**: the v2 core, the v2.1 habit layer,
+   **209 assertions, all green**: the v2 core, the v2.1 habit layer,
    the v2.2 adapters, the v2.3 brief / impact / judge-mode /
    warmth-report / captured-snapshot / PhoneUse-detection
    behaviours, the v2.4 use-case packs (isolation of your list

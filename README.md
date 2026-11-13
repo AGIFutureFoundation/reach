@@ -47,15 +47,18 @@ Everything below is enforced as behaviour, tested, not promised:
   in its own slot — your own people are never touched — and each
   pack's first person runs the full flow: research → draft →
   approval.
-- **Holding mode — the fleet** *(v2.5)* — one phone per holding of
-  the agentic network: the **Fellowship phone** (community and
-  city-guide outreach), the **Foundation phone** (partner and
-  funder warmth), the **BuilderSpace phone** (builder and employer
+- **Holding mode — the fleet** *(v2.5)* — one desk per holding of
+  the agentic network, routed to a five-phone fleet on the
+  PhoneUse console: the **Fellowship desk** (community and
+  city-guide outreach), the **Foundation desk** (partner and
+  funder warmth), the **BuilderSpace desk** (builder and employer
   outreach). Each runs Reach with its own people slot, profile
   name, mission, and human handoff — a Fellowship steward, Russell
   Vacanti, Mike — under one approval law. Houses never cross: a
   holding's queue can only hold its own people, and the brief and
-  impact panel count the active phone's own work. The operating
+  impact panel count the active desk's own work. (Which physical
+  phone serves which holding is assigned from the console
+  inventory — PENDING in the config, by design.) The operating
   design is [PHONE-FLEET.md](PHONE-FLEET.md).
 - **Draft studio, Listen mode, paste-import** — drafts only from
   what's on record; your list parsed on-device, uploaded nowhere.
@@ -108,7 +111,7 @@ request shapes, what the docs do and don't settle — is in
 
 A Node harness executes the real `app.js` + `integrations.js`
 against a DOM stub and asserts behaviour end to end:
-**208 assertions, all green** — the v2 core, the habit layer, the
+**209 assertions, all green** — the v2 core, the habit layer, the
 caps/provenance/import machinery, the sponsor adapters (live +
 fallback paths), the brief/impact/judge-mode/warmth surfaces,
 pack isolation proven against the store, the PhoneUse bridge's
@@ -121,9 +124,9 @@ appear on another holding's phone).
 The event awards **$3,000 in overall prizes — $1,500 / $1,000 /
 $500** — and Reach contends for them on a working, useful,
 rails-first phone agent. The practical-use-case proof is a working
-fleet: the three phones on the sponsor's console map one-to-one
-onto a real network's three holdings, each running Reach in its
-own voice under one approval law (v2.5, PHONE-FLEET.md). It also
+fleet: the five phones on the sponsor's console carry a real
+network's three holdings as isolated desks, each running Reach in
+its own voice under one approval law (v2.5, PHONE-FLEET.md). It also
 runs, for real, on the stacks of the event's partners: LangChain
 (LangSmith), Tavily (co-host of this edition), PhoneUse (whose
 open-source stack is forked above), and ElevenLabs. No category or sponsor-specific prizes are claimed,

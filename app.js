@@ -309,7 +309,7 @@ function currentPack() {
   return PACKS.find(p => p.id === store.packId) || null;
 }
 
-/* ---------------- holding mode: the three-phone fleet (v2.5) ----------
+/* ---------------- holding mode: the five-phone fleet (v2.5) ----------
    One phone per holding of the agentic network — the Fellowship
    phone, the Foundation phone, the BuilderSpace phone — each with
    its own people slot, its own profile name, its own mission and
@@ -425,17 +425,24 @@ function currentHolding() {
 /* The fleet's PhoneUse configuration. The LOCAL surface is verified
    from the fork (AGIFutureFoundation/phoneuse): API base, task
    endpoint, Bearer auth, origins allowlisted to its own web UI.
-   The HOSTED console surface is UNVERIFIED until the console review
-   lands — no console API base is claimed here, and the per-holding
-   device IDs are empty config slots that the review fills in.
-   Nothing in the app hard-codes a console endpoint or device ID. */
+   The HOSTED console reality (Mike, 2026-11-13): ONE console
+   account — agent@agifellowship.church — holding FIVE devices.
+   The three holdings are Reach-side desks that route to phones;
+   which physical device serves which holding is PENDING the
+   console inventory, so the per-holding device IDs below are
+   empty config slots — assignments land from that inventory, and
+   the console API surface stays UNVERIFIED until the review
+   verifies it. Nothing here hard-codes a console endpoint or a
+   device assignment. */
 const FLEET_CONFIG = {
   phoneuse: {
     localBase: "http://127.0.0.1:8765",
     localTasksPath: "/api/ai/tasks",
     consoleBase: "https://console.phoneuse.com",
+    consoleAccount: "agent@agifellowship.church",
+    consoleDeviceCount: 5,
     consoleApiBase: "", /* UNVERIFIED — intentionally unset */
-    consoleDevices: { fellowship: "", foundation: "", builderspace: "" } /* filled by the console review */
+    consoleDevices: { fellowship: "", foundation: "", builderspace: "" } /* PENDING — filled from the console inventory */
   }
 };
 
@@ -476,7 +483,7 @@ function renderPackBar() {
   }
 }
 
-/* The holding switcher: three phones, three holdings, one tap each.
+/* The holding switcher: three holding desks, one tap each.
    The active line is the phone's role card in miniature — profile
    name, mission, human handoff — so whoever picks the phone up
    knows whose voice it speaks in before a single draft is made. */
@@ -1971,11 +1978,11 @@ async function flowTour() {
       await flowQueue();
       setBusy(true);
       narrate(`That refusal was traced ${ls ? "to LangSmith, project “reach” — the no is on the record, metadata only" : "in the log above — connect LangSmith and the same refusal lands on the record as a reach.suppression_refusal run"}. Draft-first, approval-gated, suppression-checked: that is the whole product, in one lap.`, "log-done");
-      /* The fleet beat — three phones, three holdings, one approval
-         law. The tour ends standing on the Fellowship phone, so the
+      /* The fleet beat — five phones, three holdings, one approval
+         law. The tour ends standing on the Fellowship desk, so the
          fleet is the last thing a judge sees; “My people” restores
          the demo's own list from the Outreach view. */
-      narrate("One more lap — the fleet: three phones, three holdings, one approval law.", "log-done");
+      narrate("One more lap — the fleet: five phones, three holdings, one approval law.", "log-done");
       await wait(600);
       setActiveHolding("fellowship");
       const fh = currentHolding();
@@ -1987,7 +1994,7 @@ async function flowTour() {
           setBusy(false);
           await flowDraftOne(lead.id);
           setBusy(true);
-          narrate("The fleet in miniature: researched, drafted in the holding's own voice, and waiting on a human. The phone proposes; the human disposes — on all three phones, the same law.", "log-done");
+          narrate("The fleet in miniature: researched, drafted in the holding's own voice, and waiting on a human. The phone proposes; the human disposes — on every phone in the fleet, the same law.", "log-done");
         }
       }
     }

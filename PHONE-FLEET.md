@@ -40,9 +40,9 @@ inventory is in.*
 | # | Device | Phone ID | Paid until | Source | Holding assignment |
 |---|---|---|---|---|---|
 | 1 | Google Pixel 7 Pro (US) | `ACP6BC9P8ZEML2Z1` — [console](https://console.phoneuse.com/devices/ACP6BC9P8ZEML2Z1) | 13 Dec 2026 | VERIFIED — vendor setup email (Abdulla, CEO of PhoneUse), relayed by Mike 2026-11-13 11:49 PT | **PENDING** — waits for the full inventory |
-| 2 | — | — | — | PENDING console inventory | PENDING |
-| 3 | — | — | — | PENDING console inventory | PENDING |
-| 4 | — | — | — | PENDING console inventory | PENDING |
+| 2 | Google Pixel 7 Pro (US) | `ACP6BD9Q64XX8XE9` — [console](https://console.phoneuse.com/devices/ACP6BD9Q64XX8XE9) | 13 Dec 2026 | VERIFIED — vendor setup email, relayed by Mike 2026-11-13 11:49 PT | **PENDING** — waits for the full inventory |
+| 3 | Google Pixel 7 Pro (US) | `ACP6B99O2IWFKAA4` | 13 Dec 2026 | VERIFIED — vendor setup email, relayed by Mike 2026-11-13 11:50 PT | **PENDING** — waits for the full inventory |
+| 4 | Google Pixel 7 Pro (US) | `ATP68K8IGMSLAIBB` | 13 Dec 2026 | VERIFIED — vendor setup email, relayed by Mike 2026-11-13 11:50 PT | **PENDING** — waits for the full inventory |
 | 5 | — | — | — | PENDING console inventory | PENDING |
 
 ## The system in one paragraph

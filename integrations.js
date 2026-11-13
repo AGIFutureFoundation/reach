@@ -26,22 +26,63 @@
   const TAVILY_SEARCH_URL = "https://api.tavily.com/search";
   const ELEVEN_TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech/";
   const ELEVEN_MODEL = "eleven_flash_v2_5";
-  const ELEVEN_DEFAULT_VOICE = "21m00Tcm4TlvDq8ikWAM"; /* Rachel — a warm premade voice */
+  const ELEVEN_DEFAULT_VOICE = "EXAVITQu4vr4xnSDxMaL"; /* Sarah — v2.3: chosen from the live voice list as the warmest read for a morning brief; the v2.2 default was Rachel (21m00Tcm4TlvDq8ikWAM) */
   const LANGSMITH_RUNS_URL = "https://api.smith.langchain.com/runs";
+  const PHONEUSE_HEALTH_URL = "http://127.0.0.1:8765/health";
 
   /* ---------------- connection state ---------------- */
 
   function keys() {
     if (!store.integrations) {
-      store.integrations = { tavilyKey: "", elevenKey: "", elevenVoice: "", langsmithKey: "", langsmithProject: "reach" };
+      store.integrations = { tavilyKey: "", elevenKey: "", elevenVoice: "", langsmithKey: "", langsmithProject: "reach", phoneuseOk: false };
     }
     return store.integrations;
   }
   function tavilyConnected() { return !!keys().tavilyKey; }
   function elevenConnected() { return !!keys().elevenKey; }
   function langsmithConnected() { return !!keys().langsmithKey; }
+  function phoneuseConnected() { return !!keys().phoneuseOk; }
   function voiceId() { return (keys().elevenVoice || "").trim() || ELEVEN_DEFAULT_VOICE; }
   function projectName() { return (keys().langsmithProject || "").trim() || "reach"; }
+
+  /* ---------------- PhoneUse: the local execution layer ----------------
+     PhoneUse Local (the event sponsor's open-source stack; our fork:
+     github.com/AGIFutureFoundation/phoneuse) runs on the user's Mac
+     and drives a USB-connected iPhone via WebDriverAgent — live
+     video, OCR screen reading, tap/type/scroll — behind a local REST
+     API (and an MCP server). There is no key: the "connection" is a
+     health check, GET /health on 127.0.0.1:8765, and all Reach
+     stores is the boolean result.
+
+     Honest limits: from a public HTTPS page, browsers usually block
+     calls to a local service (mixed content / local-network rules),
+     so detection failing here is the NORMAL case and is narrated as
+     information, never as an error. Today this is detection only —
+     Reach does not send tasks through PhoneUse from the PWA; the
+     approved-card → PhoneUse-task hand-off is the native-path next
+     step, and the copy says exactly that. */
+
+  async function phoneuseHealth() {
+    if (typeof fetch !== "function") return false;
+    try {
+      const timeout = new Promise(res => setTimeout(() => res(null), 2500));
+      const res = await Promise.race([fetch(PHONEUSE_HEALTH_URL, { method: "GET" }), timeout]);
+      if (!res || !res.ok) return false;
+      try {
+        const data = await res.json();
+        if (data === "ok") return true;
+        if (data && (data.ok === true || data.status === "ok" || data.health === "ok")) return true;
+        return false;
+      } catch (_) {
+        try {
+          const text = await res.text();
+          return String(text).trim().toLowerCase() === "ok";
+        } catch (_) { return false; }
+      }
+    } catch (_) {
+      return false;
+    }
+  }
 
   /* ---------------- Tavily: live research ----------------
      POST /search, Bearer auth, basic depth = 1 credit. Returns the
@@ -163,6 +204,51 @@
     }
   }
 
+  /* ---------------- Captured research (build time) ----------------
+     Real Tavily searches, run from the build machine on Nov 13,
+     2026, about the two org types behind the seeded queue contacts
+     (a tool library; a community night market). Shown ONLY while
+     no Tavily key is connected, labelled on screen as captured —
+     a dated snapshot that ages, never passed off as live. */
+
+  const CAPTURED_RESEARCH = {
+    capturedOn: "Nov 13, 2026",
+    items: [
+      {
+        query: "tool library community lending library of things how it works",
+        forWhat: "the org type behind Sam Okafor's Bayview Tool Library",
+        title: "What is a Tool Library? — Northeastern Tool Library",
+        url: "https://www.northeasterntoollibrary.org/what-is-a-tool-library",
+        snippet: "Like a traditional library, but it lends tools and equipment for home improvement, gardening, cooking and crafting — usually for modest membership or per-tool fees, far below purchase cost. Tool libraries also host Repair Cafés and skill-sharing."
+      },
+      {
+        query: "community night market local vendors small business benefits",
+        forWhat: "the org type behind Ana Ruiz's Mission Night Market",
+        title: "Night Market Philadelphia — The Food Trust",
+        url: "https://thefoodtrust.org/wp-content/uploads/2022/07/report-5-years-of-night-market-philadelphia.original.pdf",
+        snippet: "A night market is an opportunity for local entrepreneurs to grow their businesses and build a lasting customer base — a catalyst for sustained community engagement, jobs, tax revenue and real economic growth."
+      }
+    ]
+  };
+
+  function renderCaptured() {
+    const block = $("#captured-block");
+    const list = $("#captured-list");
+    if (!block || !list) return;
+    if (tavilyConnected()) {
+      block.hidden = true;
+      return;
+    }
+    list.innerHTML = CAPTURED_RESEARCH.items.map(it => `
+      <div class="captured-item">
+        <p class="captured-query">Search: “${escapeHtml(it.query)}” — for ${escapeHtml(it.forWhat)}</p>
+        <p class="captured-title">${escapeHtml(it.title)}</p>
+        <p class="captured-snippet">${escapeHtml(it.snippet)}</p>
+        <p class="captured-url">${escapeHtml(it.url)}</p>
+      </div>`).join("");
+    block.hidden = false;
+  }
+
   /* ---------------- LangSmith: the audit trail ----------------
      One POST /runs per action, a completed run carrying the event
      in its name (reach.draft_created, reach.cap_refusal, …) and
@@ -229,10 +315,12 @@
     setStatus("#status-tavily", tavilyConnected() ? "Connected" : "Not connected", tavilyConnected());
     setStatus("#status-eleven", elevenConnected() ? "Connected" : "Not connected", elevenConnected());
     setStatus("#status-langsmith", langsmithConnected() ? "Tracing: on (LangSmith)" : "Tracing: off", langsmithConnected());
+    setStatus("#status-phoneuse", phoneuseConnected() ? "Connected · PhoneUse local API" : "Not detected", phoneuseConnected());
     const voice = $("#key-eleven-voice");
     if (voice && !voice.value) voice.value = keys().elevenVoice || "";
     const proj = $("#key-langsmith-project");
     if (proj && !proj.value) proj.value = projectName();
+    renderCaptured();
   }
 
   function wireClick(id, fn) {
@@ -320,6 +408,29 @@
     narrate("LangSmith disconnected and its key erased from this phone. Tracing is off.");
   });
 
+  wireClick("#connect-phoneuse", async () => {
+    setMsg("#msg-phoneuse", "Asking the local service at 127.0.0.1:8765 whether it's there…");
+    const ok = await phoneuseHealth();
+    keys().phoneuseOk = ok;
+    persist();
+    renderPanel();
+    if (ok) {
+      setMsg("#msg-phoneuse", "Connected · PhoneUse local API — the health check answered ok. PhoneUse is running on this machine: the execution layer Reach's approved cards are shaped for. Today the PWA detects it; handing approved tasks to it is the native-path next step, and Reach claims nothing more.");
+      narrate("PhoneUse detected — its local API answered the health check. The iPhone execution layer is on this machine.", "log-done");
+    } else {
+      setMsg("#msg-phoneuse", "PhoneUse not detected on this device — and from a public web page, that's the normal result: browsers block calls from an HTTPS page to a local service. PhoneUse is the Mac-side execution layer (it runs beside your iPhone, not in this tab); nothing is broken, and no error occurred. The architecture — approved Reach cards becoming PhoneUse tasks — is in the judging guide, and our fork is github.com/AGIFutureFoundation/phoneuse.");
+      narrate("PhoneUse not detected from this page — expected from a web page, since browsers block local calls. It's the Mac-side execution layer; see the repo for the architecture.");
+    }
+  });
+
+  wireClick("#disconnect-phoneuse", () => {
+    keys().phoneuseOk = false;
+    persist();
+    renderPanel();
+    setMsg("#msg-phoneuse", "Detection forgotten — the boolean is cleared from this phone. Run Detect again any time PhoneUse is up.");
+    narrate("PhoneUse detection forgotten. Nothing else changed.");
+  });
+
   /* Voice ID and project name save as they're edited, key or no key. */
   const voiceField = $("#key-eleven-voice");
   if (voiceField) voiceField.addEventListener("change", () => { keys().elevenVoice = (voiceField.value || "").trim(); persist(); });
@@ -335,6 +446,10 @@
     tavilySearch,
     speakEleven,
     speakSeriesEleven,
-    trace
+    trace,
+    capturedResearch: CAPTURED_RESEARCH,
+    defaultVoiceId: () => ELEVEN_DEFAULT_VOICE,
+    phoneuseConnected,
+    phoneuseHealth
   };
 })();

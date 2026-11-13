@@ -47,6 +47,34 @@ before drafting anything. If a judge wants *their* data in it: **Outreach →
 Import your people** — paste two lines, watch them join the queue, parsed
 on-device, uploaded nowhere.
 
+## v2.3 — the judges build (new today)
+
+Three additions, all from real state, all reversible:
+
+- **Judge mode** — one toggle under the flow buttons. On: the 30-second
+  pitch appears as a dismissible banner on Today, the **Next best action**
+  grows, and the 90-second tour gains a **sponsor-stack lap** — it reports
+  each provider's real connection state, replays the research beat, and
+  works the queue so the refusal lands while LangSmith watches. Off:
+  everything returns to normal; the flag is one persisted boolean.
+- **Morning Brief** — the **Brief me** button (or say/type “brief me”):
+  the daily-habit hero. Reach composes the morning from live state —
+  due follow-ups by name, drafts waiting, unread count, the cap
+  counters, your impact so far, and the next best action — and **reads
+  it aloud**, in the ElevenLabs voice when one is connected (default:
+  Sarah, chosen for the brief), the browser voice otherwise, saying
+  which. A `reach.morning_brief` run joins the LangSmith record when
+  tracing is on.
+- **Your Reach so far** — an impact panel on Today: touches completed,
+  drafts approved, items carried to real apps, follow-ups scheduled,
+  **refusals honored** (suppression + cap, counted since v2.3 and
+  labelled so — nothing back-filled), people protected, days active.
+  Every number is computed at render time from this phone's own
+  persisted record; demo touches on the seeded stage are counted and
+  the panel says so. **Share my warmth report** renders those same
+  numbers as a shareable card — “Never let a warm connection go
+  cold” — drawn on-device, no external images, no tracking.
+
 ## Sponsor stack — live (v2.2, new today)
 
 The three sponsor tools are not logos in this build — they are wired
@@ -72,6 +100,23 @@ isn't connected. The 20-second version, live on stage:
    `reach.cap_refusal`. *Every refusal Reach makes is on the record.*
    Tracing is fire-and-forget metadata only: no message text, no
    contact details, and a dead network changes nothing on screen.
+   Since v2.3 the runs collect in a dedicated project named
+   **`reach`** (created for this build; the panel's Project field
+   defaults to it).
+
+4. **PhoneUse (0:20, v2.3)** — the fourth row needs no key at all:
+   *Detect PhoneUse* asks the local service at `127.0.0.1:8765` for
+   its health. **If PhoneUse is running on the Mac at the booth, the
+   panel detects it live** — “Connected · PhoneUse local API.” From
+   the public site it will usually read “not detected,” and the copy
+   on the row already says why that's the normal result (browsers
+   block local calls from HTTPS pages) — the fork and the
+   architecture carry the beat: **https://github.com/AGIFutureFoundation/phoneuse**.
+   The story: PhoneUse is Reach's iOS execution layer — an approved
+   card here becomes a PhoneUse task on your own Mac + iPhone, and
+   nothing reaches PhoneUse that Reach didn't get a tap for. Today
+   that's architecture + live detection; we don't claim the PWA
+   sends through it.
 
 **The honesty paragraph.** Keys live only in this browser's local
 storage, are sent only to their own provider, and are never exported
@@ -103,7 +148,12 @@ enhancement, not a dependency.
    Reach's approval gate interposed before any send.
 8. **iOS is deliberately smaller**: no cross-app reading exists there, so
    Reach is an approval console — drafts arrive as cards, the human
-   approves, connectors send.
+   approves — and **PhoneUse** (the sponsor's open-source local stack;
+   our fork: github.com/AGIFutureFoundation/phoneuse) is the execution
+   layer that makes an approval real on an iPhone: the approved card
+   becomes a task on the user's own Mac + phone, via its local API or
+   MCP server. The v2.3 panel detects a running PhoneUse by its health
+   check; the task hand-off is the native-path next step.
 9. The CRM stays the system of record; Reach is its phone surface, not a fork.
 10. The approval is not a v1 limitation. It is the product, on every layer.
 
@@ -118,6 +168,47 @@ enhancement, not a dependency.
 - **Provenance on every item** — seed demo data, added by you, or imported
   by you, in one line, on the queue card and the approval card.
 - **Verified numbers only** — summaries count what actually happened.
+
+## Path to revenue
+
+The model, stated plainly — no invented figures, no traction claims:
+
+- **Per-seat pricing for small outreach and founder teams.** The buyer
+  is a 2–20 person team whose relationships live in the founder's
+  phone: agencies, studios, community builders, small sales teams.
+  Reach is priced per seat, per month — the unit is a person whose
+  warm connections stop going cold.
+- **The rails are the paid differentiator.** Draft-first exact-copy
+  approval, suppression checked before drafting, caps enforced as
+  counters, provenance on every item. Free tools will draft anything
+  to anyone; Reach is the one a team can trust near its real
+  relationships, because the no is enforced, narrated, and — with
+  LangSmith connected — on the record.
+- **Metered costs sit with the user, by design.** The BYOK model means
+  Tavily research credits and ElevenLabs voice characters are spent
+  from the customer's own provider accounts, at the provider's own
+  rates. Reach carries no inference or voice margin risk; the
+  customer's usage is the customer's bill, visible in their own
+  dashboards.
+- **LangSmith traces are the enterprise audit story.** The same
+  fire-and-forget run record that demos today becomes the compliance
+  artifact a larger team buys: every draft, approval, refusal, and
+  cap event, metadata only, in their own workspace. That is the
+  upsell from seats to teams to organisations with a duty of care
+  over outreach.
+
+## Prize fit
+
+What the event record supports, and nothing more: the Do Not Disturb:
+Phone Use Hackathon (Exit 1, Frontier Tower, 2026-11-13) awards
+**$3,000 in overall prizes — $1,500 / $1,000 / $500** — and Reach is
+built to contend for the overall prizes on the strength of a working,
+useful, rails-first phone agent. The build also runs on the stacks of
+two of the event's partners, for real: **LangChain** (LangSmith
+tracing, in a project created for this app) and **Tavily** (live
+research, co-host of this edition) — plus ElevenLabs voice. No
+category or sponsor-specific prizes are claimed, because none are on
+the event record.
 
 ## Deliberately NOT in the demo
 

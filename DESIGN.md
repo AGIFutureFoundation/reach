@@ -488,3 +488,99 @@ panel connect + key persistence, live research rendering, narrated
 fallback, voice success + browser fallback, refusal/approval/send
 tracing with a metadata-only assertion, tracing failure invisibility,
 key survival across reload, disconnect, and full erase.
+
+## 12 · v2.3 — the judges build: the brief, the proof, the stage
+
+Built the same day, on top of v2.2, in the order a judge meets them.
+
+### The Morning Brief — the daily habit, spoken
+
+One button (**Brief me**) and one voice command (“brief me”) compose
+the day from real state and read it aloud: due follow-ups by name,
+drafts waiting on approval, the unread count, today's cap usage, the
+impact line, and the next best action. The voice is ElevenLabs when
+connected — the default voice is now **Sarah**
+(`EXAVITQu4vr4xnSDxMaL`), picked from the account's live voice list
+as the warmest read for a morning brief — and the browser voice
+otherwise; the brief says which voice it is using, in the log, every
+time. The brief is a composition of the same state the rest of the
+app shows, never a separate summary that can drift from it, and a
+`reach.morning_brief` run joins the LangSmith record when tracing is
+on. This is the retention mechanic made audible: the all-done state
+was the promise; the brief is the morning knock.
+
+### The impact panel — usefulness, counted
+
+**Your Reach so far** sits on Today and computes every number at
+render time from the phone's own persisted record: touches completed
+(from the touch history), drafts approved versus carried to real apps
+(the copy/share split inside that same history), follow-ups scheduled
+and due (the nudge store), people protected (the queue's
+do-not-contact state), days active (distinct dates in the history).
+Refusals honored — suppression and cap — are counted by two additive
+counters that start with v2.3, and the tile says exactly that:
+counted since v2.3, never back-filled or estimated. Demo touches on
+the seeded stage are inside these numbers and the panel heading says
+so. The **warmth report** renders the same counts as a shareable
+canvas card under the promise line — drawn on-device, no external
+images, no tracking, leaving the phone only through the share sheet
+the user invokes (with a text fallback where canvas or share is
+unavailable).
+
+### Judge mode — the stage, reversible
+
+A single toggle stages the demo for judging: the 30-second pitch as
+a dismissible banner on Today, an enlarged Next best action, and a
+sponsor-stack lap appended to the guided tour (connection state read
+live from the adapters → the research beat → the queue refusal, with
+the LangSmith outcome stated as it actually is). It is one persisted
+boolean; toggling off removes the banner, the sizing class, and the
+extra beats, and changes nothing else. A demo mode that cannot be
+fully reversed would be a second product hiding inside the first —
+this one is a lens, not a fork.
+
+### The captured shelf — honesty about offline evidence
+
+With no Tavily key connected, the panel shows two real Tavily
+searches captured on the build machine on Nov 13, 2026 (a tool
+library; a night market — the org types behind two seeded contacts),
+labelled **“Captured live at build time”** with their date, and
+hidden the moment a key connects. The design rule is the same one
+the whole app runs on: a label may never claim more than the thing
+it labels. Captured evidence is useful; captured evidence dressed
+as live would be the one unforgivable bug.
+
+### PhoneUse — the iOS layer gets an address
+
+Section 3 left iOS deliberately smaller: no cross-app reading
+exists there, so Reach on iPhone is an approval console. v2.3 names
+the layer that completes that story. **PhoneUse Local** — the event
+sponsor's open-source stack, forked today at
+**github.com/AGIFutureFoundation/phoneuse** (MIT) — runs on the
+user's own Mac and drives a USB-connected iPhone through
+WebDriverAgent: live video, OCR screen reading, tap, type, scroll,
+exposed as a local REST API and an MCP server. The composition is
+exact: Reach's rails (draft → exact-copy approval → suppression and
+cap checks) run first, in the PWA, where they already live; an
+approved card then becomes a PhoneUse task on hardware the user
+owns, and nothing reaches PhoneUse that Reach didn't get a tap for.
+The panel's fourth row is the honest first increment of that
+composition: a keyless health check (`GET 127.0.0.1:8765/health`)
+that stores one boolean. Browser rules mean the check usually
+cannot see a local service from a public page, so the row's copy
+pre-registers “not detected” as the normal case — the same
+label-discipline as the captured shelf. Claimed today: architecture
+plus live detection. Not claimed: the PWA sending tasks through
+PhoneUse — that hand-off is the native-path next step, stated as
+such everywhere it is mentioned.
+
+### What v2.3 deliberately did not change
+
+The rails, the store schema (v3 — stats and the judge flag are
+additive fields, migrated like `integrations` was), the service
+worker's cache identity, and the no-keys behaviour. The extended
+harness now runs **133 assertions, all green** — the 89 of v2.2 plus
+44 covering brief composition and voice labelling, impact math from
+state, the refusal counters, judge-mode reversal, the warmth-report
+fallback, the captured shelf's visibility rules, and PhoneUse
+detection (healthy, blocked, and forgotten).

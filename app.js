@@ -95,7 +95,8 @@ const LS_VERSION = 3;
    everything else by the Erase control. Empty = not connected, and
    Reach behaves exactly as it did before the stack existed. */
 const DEFAULT_INTEGRATIONS = {
-  tavilyKey: "", elevenKey: "", elevenVoice: "", langsmithKey: "", langsmithProject: "reach"
+  tavilyKey: "", elevenKey: "", elevenVoice: "", langsmithKey: "", langsmithProject: "reach",
+  phoneuseOk: false /* v2.3: PhoneUse detection is a boolean — there is no key */
 };
 
 const DEFAULT_PROFILE = {
@@ -112,8 +113,15 @@ function dateKey(d) {
 
 function freshDay() { return { date: dateKey(), touches: 0, kinds: [], mailbox: 0, cold: 0 }; }
 
+/* v2.3 additive fields, same trick as `integrations`: refusal
+   counters for the impact panel, and the Judge mode flag. No schema
+   bump — older stores take the defaults and migrate untouched. The
+   refusal counters start when this version lands, and the panel
+   says so; they are never back-filled or estimated. */
+const DEFAULT_STATS = { suppression: 0, cap: 0 };
+
 function loadStore() {
-  const blank = { version: LS_VERSION, profile: { ...DEFAULT_PROFILE }, people: [], saved: [], day: freshDay(), nudges: [], history: [], integrations: { ...DEFAULT_INTEGRATIONS } };
+  const blank = { version: LS_VERSION, profile: { ...DEFAULT_PROFILE }, people: [], saved: [], day: freshDay(), nudges: [], history: [], integrations: { ...DEFAULT_INTEGRATIONS }, stats: { ...DEFAULT_STATS }, judgeMode: false };
   try {
     const raw = window.localStorage.getItem(LS_KEY);
     if (!raw) return blank;
@@ -129,12 +137,20 @@ function loadStore() {
       day: parsed.day && parsed.day.date === dateKey() ? { ...freshDay(), ...parsed.day, date: dateKey() } : freshDay(),
       nudges: Array.isArray(parsed.nudges) ? parsed.nudges : [],
       history: Array.isArray(parsed.history) ? parsed.history : [],
-      integrations: { ...DEFAULT_INTEGRATIONS, ...(parsed.integrations || {}) }
+      integrations: { ...DEFAULT_INTEGRATIONS, ...(parsed.integrations || {}) },
+      stats: { ...DEFAULT_STATS, ...((parsed.stats && typeof parsed.stats === "object") ? parsed.stats : {}) },
+      judgeMode: !!parsed.judgeMode
     };
     return out;
   } catch (_) {
     return blank;
   }
+}
+
+function bumpStat(kind) {
+  if (!store.stats) store.stats = { ...DEFAULT_STATS };
+  store.stats[kind] = (store.stats[kind] || 0) + 1;
+  persist();
 }
 
 const store = loadStore();
@@ -520,6 +536,140 @@ function nextAction() {
   return null;
 }
 
+/* ---------------- Your Reach so far: the impact panel ----------------
+   Every number here is computed from this phone's own persisted
+   record at render time — the touch history, the scheduled nudges,
+   the queue's do-not-contact state, and the refusal counters.
+   Nothing is estimated, projected, or rounded up. Touches on the
+   seeded demo stage count, and the panel heading says so. */
+
+function impactStats() {
+  const hist = store.history || [];
+  const carried = hist.filter(h => h.kind === "copy" || h.kind === "share").length;
+  const stats = store.stats || { ...DEFAULT_STATS };
+  return {
+    touches: hist.length,
+    sends: hist.length - carried,
+    carried,
+    followUpsPending: (store.nudges || []).length,
+    followUpsDue: dueNudges().length,
+    protectedCount: state.queue.filter(q => q.suppressed).length,
+    refusals: (stats.suppression || 0) + (stats.cap || 0),
+    suppressionRefusals: stats.suppression || 0,
+    capRefusals: stats.cap || 0,
+    days: new Set(hist.map(h => h.date)).size
+  };
+}
+
+function renderImpact() {
+  const grid = $("#impact-grid");
+  if (!grid) return;
+  const s = impactStats();
+  const tiles = [
+    { n: s.touches, label: "Touches completed", sub: "sends, copies and shares you finished" },
+    { n: s.sends, label: "Drafts approved", sub: "exact text, approved by you, then sent" },
+    { n: s.carried, label: "Carried to real apps", sub: "copied or shared out by your own hand" },
+    { n: s.followUpsPending, label: "Follow-ups scheduled", sub: s.followUpsDue ? `${s.followUpsDue} due right now` : "none due right now" },
+    { n: s.refusals, label: "Refusals honored", sub: `suppression ${s.suppressionRefusals} · cap ${s.capRefusals} — counted since v2.3` },
+    { n: s.protectedCount, label: "People protected", sub: "on the do-not-contact list, never drafted to" },
+    { n: s.days, label: "Days active", sub: "days with at least one touch, on this phone" }
+  ];
+  grid.innerHTML = tiles.map(t => `
+    <div class="impact-tile">
+      <span class="impact-num">${t.n}</span>
+      <span class="impact-label">${escapeHtml(t.label)}</span>
+      <span class="impact-sub">${escapeHtml(t.sub)}</span>
+    </div>`).join("");
+}
+
+/* The warmth report: the same counted numbers, as one shareable
+   card. Rendered on a canvas from the stats and the promise line —
+   no external images, no tracking, nothing leaves the phone except
+   through the share sheet you invoke. */
+function warmthLines() {
+  const s = impactStats();
+  return [
+    "Never let a warm connection go cold.",
+    `${s.touches} touches completed · ${s.sends} drafts approved by a human`,
+    `${s.carried} carried to real apps · ${s.followUpsPending} follow-ups scheduled`,
+    `${s.refusals} refusals honored · ${s.protectedCount} people protected, never contacted`,
+    `${s.days} day${s.days === 1 ? "" : "s"} of showing up — counted on my phone by Reach.`
+  ];
+}
+
+async function shareWarmthReport() {
+  const lines = warmthLines();
+  const text = "My warmth report — Reach\n" + lines.join("\n");
+  let canvas = null;
+  let ctx = null;
+  try {
+    canvas = document.createElement("canvas");
+    canvas.width = 1200; canvas.height = 630;
+    ctx = canvas.getContext ? canvas.getContext("2d") : null;
+  } catch (_) { ctx = null; }
+  if (!ctx) {
+    narrate("This browser can't draw the report card, so here's the text version — copy it anywhere:", "log-done");
+    lines.forEach(l => narrate(l));
+    return;
+  }
+  ctx.fillStyle = "#0b1e3a";
+  ctx.fillRect(0, 0, 1200, 630);
+  ctx.strokeStyle = "#e8c85a";
+  ctx.lineWidth = 10;
+  ctx.beginPath(); ctx.arc(108, 522, 34, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.arc(108, 522, 62, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+  ctx.beginPath(); ctx.arc(108, 522, 92, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+  ctx.fillStyle = "#e8c85a";
+  ctx.font = "800 44px Georgia, serif";
+  ctx.fillText("REACH — MY WARMTH REPORT", 70, 110);
+  ctx.fillStyle = "#fffdf7";
+  ctx.font = "italic 600 40px Georgia, serif";
+  ctx.fillText("“Never let a warm connection go cold.”", 70, 185);
+  ctx.font = "500 33px system-ui, sans-serif";
+  lines.slice(1).forEach((l, i) => ctx.fillText(l, 70, 285 + i * 62));
+  ctx.fillStyle = "#c7d2df";
+  ctx.font = "500 25px system-ui, sans-serif";
+  ctx.fillText(new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) + " · Counted on my phone — nothing uploaded, nothing estimated.", 70, 585);
+  const shareFile = blob => {
+    try {
+      if (blob && typeof File === "function" && navigator.canShare) {
+        const file = new File([blob], "reach-warmth-report.png", { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file], text }).catch(() => {});
+          narrate("Warmth report card is in the share sheet — send it wherever your people are.", "log-done");
+          return;
+        }
+      }
+    } catch (_) { /* fall through to download */ }
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "reach-warmth-report.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      narrate("Warmth report card downloaded — an image drawn from this phone's own counts.", "log-done");
+    } catch (_) {
+      narrate("The card couldn't be saved in this browser — the numbers are in “Your Reach so far” above, and the text version is:", "log-done");
+      lines.forEach(l => narrate(l));
+    }
+  };
+  try {
+    if (canvas.toBlob) { canvas.toBlob(shareFile, "image/png"); return; }
+    if (canvas.toDataURL) {
+      const bin = atob(canvas.toDataURL("image/png").split(",")[1]);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      shareFile(new Blob([bytes], { type: "image/png" }));
+      return;
+    }
+  } catch (_) { /* fall through */ }
+  narrate("The card couldn't be rendered in this browser — the text version is:", "log-done");
+  lines.forEach(l => narrate(l));
+}
+
 function renderToday() {
   const greetEl = $("#today-greeting");
   if (!greetEl) return;
@@ -574,6 +724,7 @@ function renderToday() {
   $("#mission-thank-count").textContent = thankQ ? (thankQ.status === "sent" ? "Thanked today" : `For ${thankQ.name}`) : "Nobody waiting";
   const reconQ = state.queue.find(q => q.move === "reconnect" && !q.suppressed);
   $("#mission-reconnect-count").textContent = reconQ ? (reconQ.status === "sent" ? "Reconnected" : `For ${reconQ.name}`) : "Nobody waiting";
+  renderImpact();
 }
 
 async function runNextAction() {
@@ -860,6 +1011,7 @@ async function approveApproval(id) {
   if (before.mailbox >= MAILBOX_CAP) {
     narrate(`Today's mailbox cap is reached — ${before.mailbox} of ${MAILBOX_CAP} sends used. The real programme stops the wave here rather than risk the mailbox, so this draft stays in Approvals; the counters reset tomorrow.`, "log-refusal");
     traceEvent("cap_refusal", { to: firstName(a.toName), mailbox: before.mailbox, cap: MAILBOX_CAP });
+    bumpStat("cap");
     return;
   }
   const ta = $("#draft-" + id);
@@ -1016,6 +1168,7 @@ async function flowQueue() {
         await agentTouch(card, "");
         narrate(`Skipping ${q.name} at ${q.org}. They asked not to be contacted again, so they're on the do-not-contact list — I won't draft anything for them, ever.`, "log-refusal");
         traceEvent("suppression_refusal", { to: firstName(q.name) });
+        bumpStat("suppression");
         continue;
       }
       if (q.status === "sent") { narrate(`${q.name} — already sent this session.`); continue; }
@@ -1078,6 +1231,7 @@ async function flowDraftOne(id) {
     switchView("queue");
     narrate(`${q.name} is on the do-not-contact list — ${q.suppressReason} I won't draft anything for them, ever.`, "log-refusal");
     traceEvent("suppression_refusal", { to: firstName(q.name) });
+    bumpStat("suppression");
     return;
   }
   if (state.approvals.some(a => a.refId === q.id && a.kind !== "reply")) {
@@ -1153,6 +1307,88 @@ async function flowListen() {
   }
 }
 
+/* ---------------- Morning brief: the day, composed and read ----------------
+   The daily-habit hero: one tap (or "brief me") and Reach composes
+   the morning from real state — due follow-ups first, then waiting
+   approvals, unreads, the caps, your impact so far, and the next
+   best action — and reads it aloud, in the ElevenLabs voice when
+   you've connected one, the browser voice otherwise, saying which. */
+
+function buildBriefLines() {
+  const lines = [];
+  const h = new Date().getHours();
+  const part = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  const name = (store.profile.name || "").trim();
+  const todayStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  lines.push(name ? `${part}, ${firstName(name)}. It's ${todayStr}. Here's your brief.` : `${part}. It's ${todayStr}. Here's your brief.`);
+  const due = dueNudges();
+  lines.push(due.length
+    ? `Follow-ups due: ${due.length} — ${due.map(n => n.name).join("; ")}. One tap each drafts the follow-up from what's on record.`
+    : "Follow-ups: none due. Nothing you scheduled is waiting on you.");
+  lines.push(state.approvals.length
+    ? `Drafts waiting: ${state.approvals.length} — the first is for ${state.approvals[0].toName}. Your decision is the only step left on each.`
+    : "Drafts waiting: none. Nothing is parked on your approval.");
+  const unreads = state.threads.filter(t => t.unread);
+  lines.push(unreads.length
+    ? `Unread messages: ${unreads.length} — ${unreads[0].name} at ${unreads[0].org} is first.`
+    : "Unread messages: none. Every reply is answered.");
+  const counts = sendCounts();
+  lines.push(counts.mailbox >= MAILBOX_CAP
+    ? `Sends today: ${counts.mailbox} of ${MAILBOX_CAP} from this mailbox — at the cap, so new sends wait for tomorrow. The cap held.`
+    : `Sends today: ${counts.mailbox} of ${MAILBOX_CAP} from this mailbox, ${counts.cold} of ${COLD_CAP} cold. The caps are counters, enforced as state, not advice.`);
+  const s = impactStats();
+  lines.push(`Your Reach so far: ${s.touches} touches completed, ${s.refusals} refusals honored, across ${s.days} day${s.days === 1 ? "" : "s"} of showing up.`);
+  const na = nextAction();
+  lines.push(na ? `Your next best action: ${na.label}. ${na.sub}` : "You're clear — every warm connection is warm. That's the whole brief.");
+  return lines;
+}
+
+async function flowBrief() {
+  if (state.busy) return;
+  setBusy(true);
+  try {
+    switchView("today");
+    renderToday();
+    const ig = window.ReachIntegrations;
+    const inEleven = !!(ig && ig.elevenConnected());
+    narrate(inEleven
+      ? "Morning brief — reading it aloud in the ElevenLabs voice you connected. The browser voice stays as the fallback for any line it can't say."
+      : "Morning brief — reading it aloud in your browser's voice. Connect ElevenLabs in the sponsor stack below and the brief speaks in that warm voice instead.", "log-done");
+    const lines = buildBriefLines();
+    narrateSilent = true;
+    lines.forEach(l => narrate(l));
+    narrateSilent = false;
+    traceEvent("morning_brief", { lines: lines.length, voice: inEleven ? "elevenlabs" : "browser" });
+    const spoke = speakSeries(lines);
+    if (!spoke) narrate("This browser can't speak aloud, so your brief is in the log above instead — a screen reader will read it the same way.");
+  } finally {
+    setBusy(false);
+  }
+}
+
+/* ---------------- Judge mode: the staged lap, fully reversible ---------
+   One toggle: the 30-second pitch appears on Today, the Next best
+   action grows, and the tour gains a sponsor-stack lap (connect →
+   live research → the refusal that lands on the record). The flag
+   persists like any other setting; toggling off removes the class,
+   the banner, and the extra beats — nothing else about the app
+   changes. */
+
+let pitchDismissed = false;
+
+function judgeModeOn() {
+  return !!store.judgeMode;
+}
+
+function applyJudgeMode() {
+  const on = judgeModeOn();
+  const toggle = $("#judge-toggle");
+  if (toggle) toggle.checked = on;
+  document.body.classList.toggle("judge-on", on);
+  const banner = $("#pitch-banner");
+  if (banner) banner.hidden = !(on && !pitchDismissed);
+}
+
 /* ---------------- Guided demo: Mike's 90-second judging flow ---------------- */
 
 async function flowTour() {
@@ -1185,6 +1421,33 @@ async function flowTour() {
       setBusy(true);
       narrate("That draft was built only from what's on record about " + thankQ.name.split(" ")[0] + " — anything Reach didn't know became a bracketed prompt, never an invented detail. It waits for a human, like everything here.");
       await wait(1200);
+    }
+    if (judgeModeOn()) {
+      /* The sponsor-stack lap: connect, live research, the refusal —
+         each beat uses the real adapter state, and says plainly when
+         a provider isn't connected. */
+      narrate("Judge mode adds one lap — the sponsor stack, live.", "log-done");
+      await wait(600);
+      const ig = window.ReachIntegrations;
+      const tav = !!(ig && ig.tavilyConnected());
+      const elv = !!(ig && ig.elevenConnected());
+      const ls = !!(ig && ig.langsmithConnected());
+      const pu = !!(ig && ig.phoneuseConnected && ig.phoneuseConnected());
+      narrate(`Sponsor stack, as it stands: Tavily ${tav ? "connected — research runs live" : "not connected"}, ElevenLabs ${elv ? "connected — the warm voice is on" : "not connected"}, LangSmith ${ls ? "connected — runs are landing on the record" : "not connected"}, PhoneUse ${pu ? "detected — the local iPhone execution layer answered its health check" : "not detected from this page, which is the normal result for a local service"}. Keys live on this device only; without yours, every step falls back cleanly — nothing breaks, it just says so.`);
+      switchView("messages");
+      if (state.threads.some(t => t.unread)) {
+        narrate("Beat one — research before drafting. Replying to Maya Chen runs the research step first:");
+        setBusy(false);
+        await flowReply();
+        setBusy(true);
+        narrate(`That card was ${tav ? "labelled Live · Tavily, with your own sources merged in" : "labelled Staged · profile — no key connected, so Reach used the captured profile and the on-device notes, and said so on the card"}. Now the refusal:`);
+      } else {
+        narrate(`Beat one — research before drafting: you saw it in the tour, where the reply to Maya Chen opened with a research card ${tav ? "labelled Live · Tavily, with your own sources merged in" : "labelled Staged · profile — no key connected, so Reach used the captured profile and the on-device notes, and said so on the card"}. Now the refusal:`);
+      }
+      setBusy(false);
+      await flowQueue();
+      setBusy(true);
+      narrate(`That refusal was traced ${ls ? "to LangSmith, project “reach” — the no is on the record, metadata only" : "in the log above — connect LangSmith and the same refusal lands on the record as a reach.suppression_refusal run"}. Draft-first, approval-gated, suppression-checked: that is the whole product, in one lap.`, "log-done");
     }
     switchView("today");
     renderToday();
@@ -1224,6 +1487,7 @@ async function handleCommand(raw) {
     narrate("No draft is waiting to skip.");
     return;
   }
+  if (t.includes("brief")) return flowBrief();
   if (t.includes("listen") || t.includes("read my day") || t.includes("read the day")) return flowListen();
   if (t.includes("today") || t === "home") { switchView("today"); narrate("Today's three touches are on the stage — one tap on Next best action and I'll walk it with you."); return; }
   if (t.includes("thank")) {
@@ -1238,7 +1502,7 @@ async function handleCommand(raw) {
   if (t.includes("summar") || t.includes("what do you see") || t.includes("what can you see")) return flowSummarize();
   if (t.includes("queue") || t.includes("outreach")) return flowQueue();
   if (t.includes("reply") || t.includes("unread") || t.includes("message")) return flowReply();
-  narrate("I can: reply to the first unread message, work the outreach queue, draft a thank-you or a reconnection, listen to your day, or summarize what I see. Try “next” for your next best action — or tap a big button.");
+  narrate("I can: brief you on your day, reply to the first unread message, work the outreach queue, draft a thank-you or a reconnection, listen to your day, or summarize what I see. Try “brief me” or “next” — or tap a big button.");
 }
 
 $$(".flow-btn").forEach(btn => btn.addEventListener("click", () => {
@@ -1248,6 +1512,7 @@ $$(".flow-btn").forEach(btn => btn.addEventListener("click", () => {
   if (f === "summarize") { narrateUser("Summarize what you see"); flowSummarize(); }
   if (f === "tour") { narrateUser("Show me Reach"); flowTour(); }
   if (f === "listen") { narrateUser("Listen to my day"); flowListen(); }
+  if (f === "brief") { narrateUser("Brief me"); flowBrief(); }
 }));
 
 $("#command-form").addEventListener("submit", e => {
@@ -1316,6 +1581,28 @@ $$(".mission-btn").forEach(btn => btn.addEventListener("click", () => {
   if (m === "thank") { const q = state.queue.find(x => x.move === "thank" && !x.suppressed); if (q) flowDraftOne(q.id); else narrate("No thank-you is waiting — add someone from the Outreach queue."); }
   if (m === "reconnect") { const q = state.queue.find(x => x.move === "reconnect" && !x.suppressed); if (q) flowDraftOne(q.id); else narrate("No reconnection is waiting — add someone from the Outreach queue."); }
 }));
+$("#warmth-share-btn").addEventListener("click", () => { shareWarmthReport(); });
+
+$("#judge-toggle").addEventListener("change", () => {
+  store.judgeMode = $("#judge-toggle").checked;
+  persist();
+  applyJudgeMode();
+  if (store.judgeMode) {
+    switchView("today");
+    renderToday();
+    narrate("Judge mode is on: the 30-second pitch is on Today, the Next best action is bigger, and the guided tour gains the sponsor-stack lap — connect, live research, the refusal on the record. Toggle it off and everything returns to normal.", "log-done");
+  } else {
+    narrate("Judge mode is off — pitch away, normal sizing, standard tour. Nothing else changed.", "log-done");
+  }
+});
+
+$("#pitch-dismiss").addEventListener("click", () => {
+  pitchDismissed = true;
+  const banner = $("#pitch-banner");
+  if (banner) banner.hidden = true;
+  narrate("Pitch hidden. Judge mode stays on — the tour still runs the sponsor lap; toggle Judge mode off to return everything to normal.");
+});
+
 $("#today-add-btn").addEventListener("click", () => {
   switchView("queue");
   const el = $("#person-name");
@@ -1528,6 +1815,7 @@ $("#reset-demo-btn").addEventListener("click", () => {
   store.nudges = [];
   store.day = freshDay();
   store.history = [];
+  store.stats = { ...DEFAULT_STATS };
   persist();
   narrate("Demo reset — your added people, saved drafts, and today's touches are cleared; your profile stays. Reloading the seeds…", "log-done");
   setTimeout(() => window.location.reload(), 900);
@@ -1551,6 +1839,7 @@ populateStudioPeople();
 fillProfileForm();
 applyTextSize();
 renderToday();
+applyJudgeMode();
 switchView("today");
 narrate("Reach is ready. Never let a warm connection go cold — that's the whole idea.");
 narrate("Today is on the stage: three small touches, each one read, drafted, and waiting on your approval. Tap “Next best action”, or take the 90-second tour in the panel.");

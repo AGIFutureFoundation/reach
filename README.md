@@ -122,6 +122,43 @@ endpoints, auth, free tiers, and what the docs don't settle — in
   adapters: live + fallback research, voice success + fallback,
   tracing of refusals, key persistence, disconnect, and erase.
 
+## What's new in v2.3 — the judges build
+
+- **Morning Brief.** The **Brief me** button (or “brief me”) composes
+  your day from real state — due follow-ups, waiting drafts, unreads,
+  cap usage, your impact so far, the next best action — and reads it
+  aloud: the ElevenLabs voice when connected, your browser's voice
+  otherwise, saying which. The default ElevenLabs voice is now
+  **Sarah**, picked from the live voice list as the warmest read for
+  a morning brief.
+- **Your Reach so far.** An impact panel on Today — touches
+  completed, drafts approved, follow-ups scheduled, refusals honored,
+  people protected, days active — every number computed from this
+  phone's own record. Nothing estimated; refusal counts start with
+  v2.3 and are labelled so. **Share my warmth report** turns the same
+  numbers into a shareable card: *never let a warm connection go
+  cold.*
+- **Judge mode.** One toggle: the 30-second pitch on Today, a bigger
+  Next best action, and a sponsor-stack lap inside the guided tour —
+  connect → live research → the refusal on the record. Toggle off
+  and everything returns to normal.
+- **A dedicated LangSmith project** named **`reach`** now collects
+  the traces (the panel's Project field defaults to it), and the
+  Tavily panel carries two real searches **captured live at build
+  time** (Nov 13, 2026), clearly labelled as captured and shown only
+  while no key is connected.
+- **PhoneUse joins the panel** as a fourth, keyless row: a health
+  check against the sponsor's local iPhone-automation API
+  (`127.0.0.1:8765`). PhoneUse is Reach's iOS execution layer — an
+  approved card becomes a task on your own Mac + iPhone — with our
+  fork at **github.com/AGIFutureFoundation/phoneuse**. Today the
+  panel detects it live where browsers allow; the task hand-off is
+  the native-path next step, and the copy says so.
+- **Verified the way the rest is:** the extended smoke harness runs
+  **133 assertions, all green** — the 89 from v2.2 plus the brief,
+  the impact math, the refusal counters, judge mode, the warmth
+  report, the captured shelf, and PhoneUse detection.
+
 ## Why people come back
 
 A CRM is a place you visit when you must. Reach is built as a daily

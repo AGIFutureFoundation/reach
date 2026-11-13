@@ -55,6 +55,18 @@
 
       <div class="stage-screen" id="stage-screen">
         <section id="view-today" class="view" aria-label="Today — your three touches">
+          <div class="pitch-banner" id="pitch-banner" hidden>
+            <p class="pitch-kicker">The 30-second pitch · Judge mode</p>
+            <p class="pitch-text">Your phone is on Do Not Disturb. Your agent
+              isn't. Reach surfaces the few people who need a reply, a
+              thank-you, or a reconnection — reads the screen, does the
+              research, types the draft. You make one decision per message:
+              <em>approve this exact text?</em> Nothing sends without you,
+              nobody on a do-not-contact list is ever drafted to, and a real
+              programme's caps are counters, not advice. Three touches a day —
+              <strong>never let a warm connection go cold.</strong></p>
+            <button type="button" class="mini-btn" id="pitch-dismiss">Got it — hide the pitch</button>
+          </div>
           <h3 class="today-greeting" id="today-greeting">Good morning.</h3>
           <p class="view-intro">Three small touches keep a whole network warm.
             Reach does the reading and typing — you make one decision each.</p>
@@ -87,6 +99,14 @@
             <h3 class="followups-title">Due follow-ups</h3>
             <p class="view-intro">Nudges you scheduled, due now. One tap drafts the follow-up from what's on record.</p>
             <ul class="followups-list" id="followups-list"></ul>
+          </div>
+          <div class="impact" id="impact-block">
+            <h3 class="impact-title">Your Reach so far</h3>
+            <p class="view-intro">Counted on this phone, from Reach's own
+              record — demo touches on the seeded stage included, nothing
+              estimated, nothing uploaded.</p>
+            <div class="impact-grid" id="impact-grid"></div>
+            <button type="button" class="mini-btn" id="warmth-share-btn">Share my warmth report</button>
           </div>
           <button type="button" class="text-btn" id="today-add-btn">Add someone you don't want to lose →</button>
           <p class="today-note">Seed people on this stage are fictional. People
@@ -213,6 +233,10 @@
         <span class="flow-title">Summarize what you see</span>
         <span class="flow-sub">A spoken-style rundown of the whole stage</span>
       </button>
+      <button type="button" class="flow-btn" data-flow="brief">
+        <span class="flow-title">Brief me</span>
+        <span class="flow-sub">Your morning brief — due follow-ups, waiting drafts, unreads, caps, next action — read aloud</span>
+      </button>
       <button type="button" class="flow-btn flow-btn-gold" data-flow="tour">
         <span class="flow-title">Show me Reach (90 seconds)</span>
         <span class="flow-sub">The guided tour: Today → draft → your approval → done</span>
@@ -223,11 +247,22 @@
       </button>
     </div>
 
+    <div class="switch-row">
+      <label class="switch">
+        <input type="checkbox" id="judge-toggle">
+        <span>Judge mode</span>
+      </label>
+      <p class="hint">Stages Reach for judging: the pitch on Today, a bigger
+        Next best action, and the tour extended with the sponsor-stack lap —
+        connect, live research, the refusal that lands on the record.
+        Toggle it off and everything returns to normal.</p>
+    </div>
+
     <form id="command-form" class="command-form">
       <label for="command-input">…or tell Reach what to do</label>
       <div class="command-row">
         <input id="command-input" type="text" autocomplete="off"
-               placeholder="Try: “next”, “listen”, “thank”, “approve”, “copy”">
+               placeholder="Try: “brief me”, “next”, “listen”, “thank”, “approve”, “copy”">
         <button type="button" id="mic-btn" class="mic-btn" aria-label="Speak a command">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 1 0-7 0v5A3.5 3.5 0 0 0 12 15Z" fill="currentColor"/><path d="M18.6 11.1a1 1 0 0 0-2 .4 4.6 4.6 0 1 1-9.2 0 1 1 0 0 0-2-.4 6.6 6.6 0 0 0 5.6 6.5V19H8.4a1 1 0 1 0 0 2h7.2a1 1 0 1 0 0-2H13v-1.4a6.6 6.6 0 0 0 5.6-6.5Z" fill="currentColor"/></svg>
         </button>
@@ -309,11 +344,13 @@
       <h3 id="integrations-heading">Connect the sponsor stack</h3>
       <p class="hint">Reach is built on today's stack — <strong>Tavily</strong> for
         live research, <strong>ElevenLabs</strong> for the voice,
-        <strong>LangSmith</strong> for the audit trail. Bring your own keys:
-        <strong>keys stay on this phone.</strong> Reach calls each provider
-        directly from this browser — nothing routes through us, no key ever
-        leaves the device except to its own provider, and with no keys
-        connected Reach works exactly as it did before this panel existed.</p>
+        <strong>LangSmith</strong> for the audit trail, and
+        <strong>PhoneUse</strong> as the local iPhone execution layer.
+        Bring your own keys: <strong>keys stay on this phone.</strong>
+        Reach calls each provider directly from this browser — nothing
+        routes through us, no key ever leaves the device except to its
+        own provider — and with nothing connected Reach works exactly as
+        it did before this panel existed.</p>
 
       <div class="integration-row">
         <div class="integration-head">
@@ -332,6 +369,14 @@
           <button type="button" class="mini-btn" id="disconnect-tavily">Disconnect</button>
         </div>
         <p class="integration-msg" id="msg-tavily" role="status"></p>
+        <div class="captured-block" id="captured-block" hidden>
+          <p class="captured-kind">Captured live at build time · Tavily · Nov 13, 2026</p>
+          <div id="captured-list"></div>
+          <p class="captured-note">Real Tavily results, captured when this
+            build was made — true then, labelled as captured, never passed
+            off as live. Connect a key above and the research step runs
+            live instead.</p>
+        </div>
       </div>
 
       <div class="integration-row">
@@ -346,7 +391,7 @@
         <label for="key-eleven">ElevenLabs API key</label>
         <input id="key-eleven" type="password" autocomplete="off" placeholder="sk-…">
         <label for="key-eleven-voice">Voice ID</label>
-        <input id="key-eleven-voice" type="text" autocomplete="off" placeholder="21m00Tcm4TlvDq8ikWAM — Rachel, the warm default">
+        <input id="key-eleven-voice" type="text" autocomplete="off" placeholder="EXAVITQu4vr4xnSDxMaL — Sarah, the warm default">
         <div class="integration-actions">
           <button type="button" class="mini-btn" id="connect-eleven">Connect &amp; test</button>
           <button type="button" class="mini-btn" id="disconnect-eleven">Disconnect</button>
@@ -373,6 +418,31 @@
           <button type="button" class="mini-btn" id="disconnect-langsmith">Disconnect</button>
         </div>
         <p class="integration-msg" id="msg-langsmith" role="status"></p>
+      </div>
+
+      <div class="integration-row">
+        <div class="integration-head">
+          <h4>PhoneUse — the iOS execution layer (local)</h4>
+          <span class="integration-status" id="status-phoneuse">Not detected</span>
+        </div>
+        <p class="hint">PhoneUse — this event's own open-source stack — runs
+          on <strong>your Mac</strong> and drives a USB-connected iPhone:
+          live video, OCR screen reading, tap, type, scroll, behind a local
+          API. It is Reach's iOS answer: an approval card you tap here
+          becomes a PhoneUse task on your own Mac and phone — and nothing
+          reaches PhoneUse that Reach didn't get a tap for. <strong>No key
+          exists for this row</strong> — the test below simply asks the
+          local service whether it's there. From a public HTTPS page like
+          this one, browsers usually block that call, so “not detected” is
+          the normal result here, not an error; run PhoneUse on the Mac
+          beside you and the check is there for the environments that
+          allow it. Our fork:
+          <strong>github.com/AGIFutureFoundation/phoneuse</strong>.</p>
+        <div class="integration-actions">
+          <button type="button" class="mini-btn" id="connect-phoneuse">Detect PhoneUse</button>
+          <button type="button" class="mini-btn" id="disconnect-phoneuse">Forget detection</button>
+        </div>
+        <p class="integration-msg" id="msg-phoneuse" role="status"></p>
       </div>
     </section>
 

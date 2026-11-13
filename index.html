@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reach — an accessibility-first phone agent for outreach</title>
-<meta name="description" content="Reach reads the screen, taps, types, and replies — outreach that runs entirely from a phone, with a human approving every send. A working demo with fictional data.">
+<title>Reach — never let a warm connection go cold</title>
+<meta name="description" content="Reach is a relationship action agent for phone-first people: it reads the screen, taps, types, and replies — surfacing the few people who need you today, drafting from what's on record, and never sending without your approval. Working demo with fictional seed data; anything you add stays on your phone.">
 <meta name="theme-color" content="#0b1e3a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -27,7 +27,7 @@
         <p class="brand-sub">The phone agent that reads, taps, types &amp; replies</p>
       </div>
     </div>
-    <span class="chip chip-demo">Demo — fictional data</span>
+    <span class="chip chip-demo">Demo — seeds fictional · yours stays on this phone</span>
   </div>
 </header>
 
@@ -35,9 +35,10 @@
 
   <!-- ======================= PHONE STAGE ======================= -->
   <section class="stage-wrap" aria-labelledby="stage-heading">
-    <h1 id="stage-heading" class="stage-heading">Outreach, run entirely from a phone</h1>
-    <p class="stage-lede">Tell Reach what to do — by voice or by typing. It reads the
-      screen on the phone below, taps through the apps, types the drafts, and waits for
+    <h1 id="stage-heading" class="stage-heading">Never let a warm connection go cold</h1>
+    <p class="stage-lede">Reach is a relationship action agent that runs entirely from a
+      phone. Each day it surfaces the few people who need a reply, a thank-you, or a
+      reconnection — reads the screen, types the draft, and waits for
       <strong>your</strong> approval before anything sends.</p>
 
     <div class="phone" id="phone">
@@ -48,12 +49,45 @@
       </div>
 
       <div class="stage-head">
-        <h2 id="stage-app-title">Messages</h2>
+        <h2 id="stage-app-title">Today</h2>
         <p class="stage-note">Staged apps · real elements the agent reads &amp; taps</p>
       </div>
 
       <div class="stage-screen" id="stage-screen">
-        <section id="view-messages" class="view" aria-label="Messages — thread list">
+        <section id="view-today" class="view" aria-label="Today — your three touches">
+          <h3 class="today-greeting" id="today-greeting">Good morning.</h3>
+          <p class="view-intro">Three small touches keep a whole network warm.
+            Reach does the reading and typing — you make one decision each.</p>
+          <div class="today-progress" role="img" aria-label="Progress: your touches today" id="today-progress">
+            <span class="sparks" id="today-sparks" aria-hidden="true"><span class="spark"></span><span class="spark"></span><span class="spark"></span></span>
+            <p class="today-progress-text" id="today-progress-text">0 of 3 touches today.</p>
+          </div>
+          <button type="button" class="next-action-btn" id="next-action-btn">
+            <span class="next-action-kind">Next best action</span>
+            <span class="next-action-label" id="next-action-label">…</span>
+            <span class="next-action-sub" id="next-action-sub"></span>
+          </button>
+          <p class="today-clear" id="today-clear" hidden>You're clear — every warm connection is warm. ✨</p>
+          <div class="missions" role="group" aria-label="Today's missions">
+            <button type="button" class="mission-btn" data-mission="reply">
+              <span class="mission-title">Reply</span>
+              <span class="mission-sub" id="mission-reply-count">—</span>
+            </button>
+            <button type="button" class="mission-btn" data-mission="thank">
+              <span class="mission-title">Thank</span>
+              <span class="mission-sub" id="mission-thank-count">—</span>
+            </button>
+            <button type="button" class="mission-btn" data-mission="reconnect">
+              <span class="mission-title">Reconnect</span>
+              <span class="mission-sub" id="mission-reconnect-count">—</span>
+            </button>
+          </div>
+          <button type="button" class="text-btn" id="today-add-btn">Add someone you don't want to lose →</button>
+          <p class="today-note">Seed people on this stage are fictional. People
+            <em>you</em> add are stored only on this phone.</p>
+        </section>
+
+        <section id="view-messages" class="view" aria-label="Messages — thread list" hidden>
           <ul class="thread-list" id="thread-list"></ul>
         </section>
 
@@ -74,23 +108,53 @@
         </section>
 
         <section id="view-queue" class="view" aria-label="Outreach queue" hidden>
-          <p class="view-intro">People the programme plans to contact — each with the
-            real reason they were chosen. Reach drafts only where a reason exists,
-            and never drafts to anyone who asked not to be contacted.</p>
+          <p class="view-intro">People worth a message — each with the real reason
+            they were chosen. Reach drafts only where a reason exists, and never
+            drafts to anyone who asked not to be contacted.</p>
           <ul class="queue-list" id="queue-list"></ul>
+          <form class="person-form" id="person-form">
+            <h3>Add someone to your queue</h3>
+            <p class="form-note">Stored on this phone only. One honest line of
+              context is all Reach needs — it drafts from what's here, never from guesses.</p>
+            <label for="person-name">Name *</label>
+            <input id="person-name" type="text" autocomplete="off" required>
+            <label for="person-org">Where / organisation</label>
+            <input id="person-org" type="text" autocomplete="off">
+            <label for="person-fit">Why them — the context on record *</label>
+            <textarea id="person-fit" rows="3" placeholder="e.g. Met at the spring workshop; she offered to intro me to two tool libraries."></textarea>
+            <label for="person-move">The move</label>
+            <select id="person-move">
+              <option value="follow-up">Follow up</option>
+              <option value="reply">Reply</option>
+              <option value="thank">Thank</option>
+              <option value="invite">Invite</option>
+              <option value="introduce">Introduce</option>
+              <option value="reconnect">Reconnect</option>
+            </select>
+            <label class="check-row">
+              <input type="checkbox" id="person-dnc">
+              <span>This person asked not to be contacted — protect them, never draft</span>
+            </label>
+            <button type="submit" class="form-submit">Add to my queue</button>
+          </form>
         </section>
 
         <section id="view-approvals" class="view" aria-label="Approvals" hidden>
           <p class="view-intro">Nothing sends without you. Read the exact draft,
-            edit it if you like, then approve — or skip it.</p>
+            edit it if you like, then approve — or copy it into a real app.</p>
           <div id="approval-list"></div>
           <p class="empty-note" id="approvals-empty">No drafts waiting. Ask Reach to
             reply to a message or work the outreach queue.</p>
+          <h3 class="saved-heading" id="saved-heading" hidden>Saved for later</h3>
+          <div id="saved-list"></div>
         </section>
       </div>
 
       <nav class="tabbar" aria-label="Staged apps">
-        <button type="button" class="tab" id="tab-messages" data-view="messages" aria-pressed="true">
+        <button type="button" class="tab" id="tab-today" data-view="today" aria-pressed="true">
+          Today
+        </button>
+        <button type="button" class="tab" id="tab-messages" data-view="messages" aria-pressed="false">
           Messages <span class="badge" id="badge-messages" hidden></span>
         </button>
         <button type="button" class="tab" id="tab-queue" data-view="queue" aria-pressed="false">
@@ -102,7 +166,7 @@
       </nav>
     </div>
 
-    <p class="stage-caption">The phone above is a simulation — three small apps built as
+    <p class="stage-caption">The phone above is a simulation — small apps built as
       ordinary web elements. Reach perceives them the way a screen reader does: by
       reading the elements and their text, not by looking at pixels. Its taps and
       typing are real operations on those apps.</p>
@@ -125,13 +189,21 @@
         <span class="flow-title">Summarize what you see</span>
         <span class="flow-sub">A spoken-style rundown of the whole stage</span>
       </button>
+      <button type="button" class="flow-btn flow-btn-gold" data-flow="tour">
+        <span class="flow-title">Show me Reach (90 seconds)</span>
+        <span class="flow-sub">The guided tour: Today → draft → your approval → done</span>
+      </button>
+      <button type="button" class="flow-btn" data-flow="listen">
+        <span class="flow-title">Listen to my day</span>
+        <span class="flow-sub">Unreads, next action and waiting drafts, read aloud in order</span>
+      </button>
     </div>
 
     <form id="command-form" class="command-form">
       <label for="command-input">…or tell Reach what to do</label>
       <div class="command-row">
         <input id="command-input" type="text" autocomplete="off"
-               placeholder="Try: “work the queue”, “approve”, “summarize”">
+               placeholder="Try: “next”, “listen”, “thank”, “approve”, “copy”">
         <button type="button" id="mic-btn" class="mic-btn" aria-label="Speak a command">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 1 0-7 0v5A3.5 3.5 0 0 0 12 15Z" fill="currentColor"/><path d="M18.6 11.1a1 1 0 0 0-2 .4 4.6 4.6 0 1 1-9.2 0 1 1 0 0 0-2-.4 6.6 6.6 0 0 0 5.6 6.5V19H8.4a1 1 0 1 0 0 2h7.2a1 1 0 1 0 0-2H13v-1.4a6.6 6.6 0 0 0 5.6-6.5Z" fill="currentColor"/></svg>
         </button>
@@ -148,15 +220,72 @@
       <p class="hint">Every step below is also announced to screen readers.</p>
     </div>
 
+    <section class="studio" aria-labelledby="studio-heading">
+      <h3 id="studio-heading">Draft studio</h3>
+      <p class="hint">Pick a person and a move. Reach writes only from what's on
+        record about them, in your tone — anything it doesn't know becomes a
+        [bracketed prompt], never an invented detail.</p>
+      <label for="studio-person">Person</label>
+      <select id="studio-person"></select>
+      <label for="studio-move">Move</label>
+      <select id="studio-move">
+        <option value="follow-up">Follow up</option>
+        <option value="reply">Reply</option>
+        <option value="thank">Thank</option>
+        <option value="invite">Invite</option>
+        <option value="introduce">Introduce</option>
+        <option value="reconnect">Reconnect</option>
+      </select>
+      <button type="button" class="run-btn studio-btn" id="studio-generate">Draft it</button>
+    </section>
+
+    <section class="profile" aria-labelledby="profile-heading">
+      <h3 id="profile-heading">Make Reach yours</h3>
+      <p class="hint"><strong>Private on this phone.</strong> No account, no server —
+        your profile, your people and your history live in this browser's local
+        storage and never leave the device in this build.</p>
+      <form id="profile-form">
+        <label for="profile-name">Your name</label>
+        <input id="profile-name" type="text" autocomplete="name">
+        <label for="profile-role">Your role / goal</label>
+        <input id="profile-role" type="text" autocomplete="off" placeholder="e.g. Community organiser, Bayview">
+        <label for="profile-tone">Your tone</label>
+        <select id="profile-tone">
+          <option>Warm</option>
+          <option>Direct</option>
+          <option>Playful</option>
+        </select>
+        <label for="profile-signoff">Your sign-off</label>
+        <input id="profile-signoff" type="text" autocomplete="off" placeholder="e.g. — Sam from Bayview">
+        <label for="profile-intention">What Reach is for, for you</label>
+        <select id="profile-intention">
+          <option>Keep in touch with people who matter</option>
+          <option>Grow my community or organisation</option>
+          <option>Find work and collaborators</option>
+          <option>Run outreach for a programme</option>
+          <option>All of it — my people are my work</option>
+        </select>
+        <button type="submit" class="run-btn studio-btn">Save my Reach</button>
+      </form>
+      <div class="trust-row">
+        <button type="button" class="mini-btn" id="export-btn">Export my data (JSON)</button>
+        <button type="button" class="mini-btn" id="reset-demo-btn">Reset demo</button>
+        <button type="button" class="mini-btn mini-btn-danger" id="erase-btn">Erase my data</button>
+      </div>
+    </section>
+
     <h3 class="log-heading">What Reach is doing</h3>
     <ol class="action-log" id="action-log" role="log" aria-live="polite" aria-label="Reach action log"></ol>
   </section>
 </main>
 
 <footer class="site-foot">
-  <p><strong>Honesty note.</strong> Every person and organisation on the stage is
-    fictional, and nothing here sends anywhere real. The web demo reads and drives
-    its own staged apps; reading <em>other</em> apps needs the Android accessibility
+  <p><strong>Honesty note.</strong> The seeded people and organisations on the stage are
+    fictional, and nothing here sends anywhere real. Anything <em>you</em> add — profile,
+    people, saved drafts — is stored only in this browser, on this device; export or
+    erase it any time from “Make Reach yours”. Copy and Share on a draft move text
+    <em>you</em> choose into your own apps; Reach itself sends nothing. The web demo reads
+    and drives its own staged apps; reading <em>other</em> apps needs the Android accessibility
     layer on the roadmap, and iOS gets an approval console instead — the design
     document in the repository says exactly where each claim stops.</p>
   <p class="foot-meta">Reach · an AGI Future Foundation build, made at

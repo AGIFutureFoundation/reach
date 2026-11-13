@@ -1,21 +1,83 @@
 # Reach
 
-**An accessibility-first phone agent for outreach.**
+**An accessibility-first phone agent. v2 promise: never let a warm connection go cold.**
 
 > The rule: everything has to be accessible from a phone.
 > The agent reads the screen, taps, types, and replies.
 
-Reach is a working demo of that rule. It runs a real outreach workflow —
-answering inbound replies and working a contact queue — entirely from a
-phone-sized web page, with the human making exactly one decision per send:
-*approve this exact text?*
+v1 proved an agent can run outreach from a phone. v2 gives a person a
+reason to open Reach every day: it is a **relationship action agent** for
+phone-first people — founders, community builders, freelancers,
+organisers, job seekers — that surfaces the few people who need a reply,
+a thank-you, or a reconnection *today*, does the reading and typing, and
+leaves the human exactly one decision per message: *approve this exact
+text?* Outreach is the professional use case; the daily habit is keeping
+warm connections alive in two-minute pockets of time.
 
-**Try it:** open the demo on a phone, tap **“Reply to first unread
-message”** or **“Work the outreach queue”**, and watch the action log. Or
-speak the command, where your browser supports it.
+**Try it:** open the demo on a phone and tap **“Show me Reach
+(90 seconds)”** — or start on **Today** and press **Next best action**.
+Speak commands where your browser supports it.
 
-Every person and organisation in the demo is fictional. Nothing sends
-anywhere real.
+The seeded people and organisations are fictional. Anything *you* add —
+your profile, your people, your saved drafts — is stored only in your
+browser, on your phone. Nothing sends anywhere real.
+
+## What's new in v2 — the habit layer
+
+- **Today home.** A greeting, your **three touches today** as a row of
+  sparks that fill as you complete them, three missions (Reply · Thank ·
+  Reconnect), and **one dominant Next best action button** that always
+  points at the highest-value pending thing. When nothing needs you,
+  Today says so: *“You're clear — every warm connection is warm.”*
+- **Make it yours.** Your name, role, tone (Warm / Direct / Playful),
+  sign-off, and intention — kept in local storage and used by every
+  generated draft. No account. A “Private on this phone” note travels
+  with the panel: nothing leaves the device in this build.
+- **Your people.** Add anyone with one honest line of context and a move
+  (reply / follow-up / thank / invite / introduce / reconnect) — or mark
+  them do-not-contact and Reach will protect that, out loud, forever.
+  Your entries persist on the device and join the queue and Today's
+  missions alongside the labelled demo seeds. Reset restores the seeds;
+  your entries are never silently overwritten.
+- **Draft studio.** Pick a person and a move; Reach drafts **only from
+  the facts on record** for that person, shaped by your tone. Anything it
+  doesn't know becomes a `[bracketed prompt]` for you — never an invented
+  detail. No context on record, no draft: the personalisation gate from
+  the outreach programme, now enforced as code.
+- **Copy / Share — the honest bridge to real apps.** Every approval card
+  can send (in the staged apps, as in v1), be **copied**, be **shared**
+  through the phone's share sheet, or be **saved for later** (saved
+  drafts persist too). Until connectors land, Copy/Share is how a Reach
+  draft becomes a real message today: the text you approved-by-eye,
+  carried by you, into your own apps. Reach itself sends nothing.
+- **Listen mode.** One tap reads the day aloud in order — unreads, next
+  action, waiting drafts, touches so far. Voice commands now include
+  “next”, “copy”, “skip”, “thank”, “reconnect”, and “listen”.
+- **Trust controls.** Export my data (one JSON file: profile, people,
+  saved drafts, history) and Erase my data (confirm, local wipe back to
+  seeds) live in the profile panel.
+- **Delight, with restraint.** Sparks that fill, a warm all-done state, a
+  tiny haptic tick on approval where the device offers one — all of it
+  subordinate to the existing floors: 48px targets, AA contrast, ARIA
+  live narration, `prefers-reduced-motion` respected everywhere.
+
+
+## Why people come back
+
+A CRM is a place you visit when you must. Reach is built as a daily
+two-minute ritual instead:
+
+1. **A reason to open it:** three named people, not a database — one
+   reply, one thank-you, one reconnection.
+2. **Zero blank-page cost:** the agent reads, researches, and types; the
+   human only decides.
+3. **A visible finish line:** three sparks. Fill them and the day is
+   *done* — Reach says “you're clear” and lets you go, rather than
+   inventing more queue to keep you scrolling.
+4. **It sounds like you:** your tone and sign-off are in every draft, so
+   approving feels like sending your own words, not a robot's.
+5. **It remembers, privately:** your people and history live on your
+   phone, exportable and erasable by you at any time.
 
 ## Why outreach, why a phone
 
@@ -81,13 +143,15 @@ support, safe at 200% zoom.
 
 ## Roadmap
 
-- **v1.1** — personalisation-gate enforcement as code, hard cap counters,
-  per-item provenance lines.
-- **v2** — a real inbox behind the stage (read-only first); approvals
-  handed to a send connector; Sent-verification returned to the phone;
-  agent-net packets as transport.
-- **v3** — Android native layer (AccessibilityService + notification
-  listener); iOS approval console.
+- **v2 (this build)** — the habit layer: Today home, local profile,
+  your people, draft studio, Copy/Share bridge, saved drafts, Listen
+  mode, export/erase. **Live**
+- **v3** — a real inbox behind the stage (read-only first); approvals
+  handed to a send connector, replacing the Copy/Share bridge where a
+  connector exists; Sent-verification returned to the phone; agent-net
+  packets as transport. **Roadmap**
+- **v4** — Android native layer (AccessibilityService + notification
+  listener); iOS approval console. **Roadmap**
 
 ## Non-goals
 

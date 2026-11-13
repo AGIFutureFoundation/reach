@@ -301,11 +301,14 @@ Free-text commands route by intent ("reply…", "queue…", "summarize…",
    three flows, voice in/out where the browser supports it. **Live**
 2. **v1.1** — personalisation-gate enforcement in the queue flow (hold items
    with no fit note), hard cap counters, per-item provenance lines.
-   **Planned**
-3. **v2** — connector-backed: a real inbox behind the stage (read-only
+   **Planned** — *the personalisation gate landed early, in v2 (§9).*
+3. **v2 (shipped — see §9)** — the habit layer: Today home, local profile,
+   your people, draft studio, Copy/Share bridge, Listen mode, trust
+   controls. **Live**
+4. **v3** — connector-backed: a real inbox behind the stage (read-only
    first), approvals handed to a send connector, Sent-verification returned
    to the phone. agent-net packets as the work transport. **Roadmap**
-4. **v3** — Android native layer: AccessibilityService reading + input,
+5. **v4** — Android native layer: AccessibilityService reading + input,
    notification-driven reply queue. iOS approval console. **Roadmap**
 
 ---
@@ -318,3 +321,98 @@ Free-text commands route by intent ("reply…", "queue…", "summarize…",
 - Reach will not claim native phone control from a web build.
 - Reach's demo data is fictional — no real person, organisation, or CRM row
   appears in the stage.
+
+---
+
+## 9 · v2 — the habit layer: from outreach tool to daily ritual
+
+v1 answered the hackathon brief. It did not yet answer the harder
+question: **why would a person open this tomorrow?** v2 is the answer,
+and it changes the product's centre of gravity without moving a single
+v1 rail.
+
+### The promise
+
+> **Never let a warm connection go cold.**
+
+Outreach (v1's frame) is something a programme does to a list. Warmth is
+something a person maintains with *their* people — the reply that's been
+sitting two days, the thank-you that was meant and never sent, the
+collaborator from spring who quietly drifted. Those losses are not a
+discipline problem; they are a *bandwidth* problem, and they happen on
+phones, in two-minute pockets of time. v2 makes Reach the agent of those
+pockets: founders, community builders, freelancers, organisers, job
+seekers — anyone whose network is their livelihood and whose desk is
+wherever they are standing.
+
+### The habit loop
+
+1. **Trigger — Today, not an inbox.** The app opens on a Today screen:
+   a greeting, three missions (Reply · Thank · Reconnect), and **one**
+   Next best action button. The unit of work is a *named person*, never
+   a count of records. Decision fatigue — the thing that kills CRMs on
+   phones — is designed out by making the next action singular.
+2. **Action — the v1 loop, unchanged.** Read → research → draft →
+   approve → act → verify. The human's contribution stays exactly one
+   decision per message, by tap or voice.
+3. **Reward — a finish line, not a feed.** Three touches a day, shown as
+   sparks that fill. At three, or when nothing is pending, Today says
+   *“You're clear — every warm connection is warm”* and stops asking.
+   A tool that lets you finish earns tomorrow's open; a tool with an
+   infinite queue trains you to avoid it.
+4. **Investment — it becomes yours.** A local profile (name, tone,
+   sign-off, intention) makes drafts sound like their author; the people
+   you add and the history you accumulate make each day start smarter
+   than the last. Investment is stored **on the device only** — the
+   privacy posture below is what makes the investment safe to make.
+
+### What v2 adds, mapped to the loop
+
+| Addition | Loop role | Status |
+|---|---|---|
+| **Today home** — greeting, sparks (3 touches/day, persisted per calendar date), missions, one Next best action, all-done state | Trigger + reward | **Live** |
+| **Make it yours** — profile (name, role/goal, tone Warm/Direct/Playful, sign-off, intention) in localStorage, schema-versioned, graceful fallback when storage is unavailable | Investment | **Live** |
+| **Your people** — add-person form (context + move, or do-not-contact) joining queue + missions, persisted; seeds labelled; reset restores seeds and never silently overwrites user entries | Investment + trigger | **Live** |
+| **Draft studio** — person × move generation from on-record facts only; unknowns as `[bracketed prompts]`; the §2 personalisation gate enforced as code (no context → hold, with the reason narrated) | Action | **Live** |
+| **Copy / Share** on every approval card, plus **Save for later** (persisted, restorable) | Action — the bridge out | **Live** |
+| **Listen mode** — the day read aloud in order (unreads → next action → waiting drafts → touches); voice commands extended: next, copy, skip, thank, reconnect, listen | Trigger, eyes-free | **Live** |
+| **Trust controls** — Export my data (JSON) and Erase my data (confirmed local wipe to seeds) in the profile panel | Investment safety | **Live** |
+| **Guided demo** — “Show me Reach (90 seconds)”: Today → draft → approval → completion, hands-free, narrating value; at the approval step it says plainly that in real use that tap is the human's, and that the tour presses it as a stand-in | Judging flow | **Live** |
+
+### The Copy/Share bridge — v2's honest answer to “but does it send?”
+
+Until connectors exist (v3), a web build cannot send from a user's real
+apps — §3 says so and v2 does not fudge it. What v2 does instead is make
+the human's carry trivial: one tap copies the exact approved text, or
+opens the phone's share sheet with it. The draft crosses into the real
+world *in the user's own hand*, which keeps the approval rail literally
+true: Reach never sends; the user sends Reach's draft from their own
+app, or approves the staged send in the demo. Copy/Share completions
+count as touches, because in the user's day they are the completed
+connection. When a connector lands, it replaces the bridge on that lane
+only — the card, the approval, and the count stay identical.
+
+### Privacy posture
+
+- No account, no server, no external request. The build makes zero
+  network calls beyond loading its own static files.
+- Profile, people, saved drafts, day counters, and history live under
+  one namespaced, schema-versioned localStorage key. If storage is
+  blocked, Reach degrades to in-memory state and says so when saving a
+  profile.
+- The seeded stage remains fictional and is labelled as such in the
+  header chip, the Today note, and the footer. User-added data is marked
+  “Added by you” wherever it renders.
+- Export is a user-initiated download; Erase is a confirmed, total,
+  local wipe. There is no telemetry to opt out of because there is none.
+
+### What v2 deliberately did not do
+
+- No notifications, streaks, or badges beyond the day itself — the
+  all-done state is the retention mechanic; nagging would betray the
+  “Do Not Disturb” thesis the product was born under.
+- No background sync, no contact import, no address book access: import
+  arrives with the connector layer, under the programme's
+  published-contacts-only rule.
+- No loosening of §8. The guided demo's single stand-in approval is
+  narrated as exactly that, and no other flow can approve anything.

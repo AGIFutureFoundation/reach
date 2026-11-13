@@ -1,8 +1,11 @@
 "use strict";
-/* Reach — accessibility-first phone agent (demo).
-   Every person and organisation below is fictional. The agent reads the
-   stage's real DOM, acts on real elements, and never sends anything
-   without a human approving the exact text first. */
+/* Reach v2 — accessibility-first phone agent (demo).
+   v2 promise: never let a warm connection go cold. Every person and
+   organisation in the seeded data below is fictional. The agent reads
+   the stage's real DOM, acts on real elements, and never sends anything
+   without a human approving the exact text first. Anything you add —
+   profile, people, saved drafts — stays in this browser's local
+   storage, on this phone only. */
 
 /* ---------------- demo data (all fictional) ---------------- */
 
@@ -55,13 +58,160 @@ const state = {
       id: "q-ana", name: "Ana Ruiz", org: "Mission Night Market", suppressed: false,
       fit: "Ana coordinates 40+ market vendors and told the traders' association that no-show stall fees are eating the market's margin.",
       draft: "Hi Ana — a fellow vendor coordinator mentioned no-show stall fees are eating the night market's margin. A two-tap stall confirmation the week before cut no-shows sharply at a similar market. Worth a short call to see whether it fits how your vendors already work?",
+      status: "waiting", move: "follow-up"
+    },
+    {
+      id: "q-priya", name: "Priya Nair", org: "Fernhill Writing Circle", suppressed: false, move: "thank",
+      fit: "Priya read the whole workshop handout draft last month and sent back two pages of notes that made it clearer — she never got a proper thank-you.",
+      draft: "",
+      status: "waiting"
+    },
+    {
+      id: "q-jordan", name: "Jordan Ellis", org: "South Bay Repair Crew", suppressed: false, move: "reconnect",
+      fit: "Jordan ran the spring fix-it session alongside your crew and you have not spoken since — the kind of warm connection that quietly goes cold.",
+      draft: "",
       status: "waiting"
     }
   ],
-  approvals: [] /* {id, kind: 'reply'|'outreach', refId, toName, org, text} */
+  approvals: [], /* {id, kind: 'reply'|'outreach'|'studio', refId, toName, org, text} */
+  saved: [] /* drafts saved for later (persisted) */
 };
 
 let approvalSeq = 0;
+
+/* ---------------- local store: profile, your people, saved drafts, the day ----------------
+   Everything here lives in this browser's localStorage, on this device
+   only. No account, no server, no external request. If storage is
+   unavailable (private mode, blocked), Reach runs on in-memory state. */
+
+const LS_KEY = "reach.v2";
+const LS_VERSION = 2;
+
+const DEFAULT_PROFILE = {
+  name: "", role: "", tone: "Warm", signoff: "", intention: "Keep in touch with people who matter"
+};
+
+function dateKey(d) {
+  d = d || new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function freshDay() { return { date: dateKey(), touches: 0, kinds: [] }; }
+
+function loadStore() {
+  const blank = { version: LS_VERSION, profile: { ...DEFAULT_PROFILE }, people: [], saved: [], day: freshDay(), history: [] };
+  try {
+    const raw = window.localStorage.getItem(LS_KEY);
+    if (!raw) return blank;
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.version !== LS_VERSION) return blank;
+    const out = {
+      version: LS_VERSION,
+      profile: { ...DEFAULT_PROFILE, ...(parsed.profile || {}) },
+      people: Array.isArray(parsed.people) ? parsed.people : [],
+      saved: Array.isArray(parsed.saved) ? parsed.saved : [],
+      day: parsed.day && parsed.day.date === dateKey() ? parsed.day : freshDay(),
+      history: Array.isArray(parsed.history) ? parsed.history : []
+    };
+    return out;
+  } catch (_) {
+    return blank;
+  }
+}
+
+const store = loadStore();
+let storageOK = true;
+
+function persist() {
+  try {
+    window.localStorage.setItem(LS_KEY, JSON.stringify(store));
+  } catch (_) {
+    storageOK = false;
+  }
+}
+
+/* Your people join the queue alongside the seeded demo people; user
+   entries are never overwritten by seeds. */
+store.people.forEach(p => {
+  if (!state.queue.some(q => q.id === p.id)) state.queue.push(p);
+});
+state.saved = store.saved.slice();
+
+function persistPeople() {
+  store.people = state.queue.filter(q => q.user);
+  persist();
+}
+function persistSaved() {
+  store.saved = state.saved.slice();
+  persist();
+}
+
+/* A "touch" is a completed connection: an approved staged send, or a
+   draft you copied/shared out to a real app. Counted per calendar day. */
+function recordTouch(kind, name) {
+  if (store.day.date !== dateKey()) store.day = freshDay();
+  store.day.touches += 1;
+  if (!store.day.kinds.includes(kind)) store.day.kinds.push(kind);
+  store.history.push({ date: store.day.date, kind, name: name || "" });
+  if (store.history.length > 200) store.history = store.history.slice(-200);
+  persist();
+  renderToday();
+}
+
+function firstName(full) { return (full || "").trim().split(/\s+/)[0] || "there"; }
+
+function capitalise(s) {
+  s = (s || "").trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+/* ---------------- draft studio generator ----------------
+   Builds a draft ONLY from the facts on record for the person (their
+   context/fit note) plus your profile (tone, sign-off). Anything Reach
+   does not know becomes a [bracketed prompt] for you — never an
+   invented detail. */
+
+const MOVE_LABELS = {
+  "reply": "Reply", "follow-up": "Follow up", "thank": "Thank",
+  "invite": "Invite", "introduce": "Introduce", "reconnect": "Reconnect"
+};
+
+function generateDraft(person, move) {
+  const first = firstName(person.name);
+  const ctx = capitalise(person.fit || "");
+  const ctxSentence = ctx ? (ctx.endsWith(".") ? ctx : ctx + ".") : "";
+  const prof = store.profile;
+  const tone = prof.tone || "Warm";
+  const sign = prof.signoff ? `\n\n${prof.signoff}` : "";
+  let open = `Hi ${first} —`;
+  if (tone === "Direct") open = `Hi ${first},`;
+  if (tone === "Playful") open = `Hi ${first} — small message, real intent:`;
+  let body = "";
+  switch (move) {
+    case "thank":
+      body = `${open} I wanted to say a proper thank-you. ${ctxSentence} It genuinely made a difference. [Add the specific moment it helped, if you want to.]${sign}`;
+      break;
+    case "reconnect":
+      body = `${open} it's been a while, and you came back to mind. ${ctxSentence} How have you been? [Add one line about what's new with you.]${sign}`;
+      break;
+    case "invite":
+      body = `${open} I'd love to invite you to [the event or thing — and when]. ${ctxSentence} You were the first person I thought of. No pressure at all if the timing's wrong.${sign}`;
+      break;
+    case "introduce":
+      body = `${open} I'd like to connect you with [someone's name — a person in your world who should know ${first}]. ${ctxSentence} I think you'd get on well. Happy for me to make the introduction?${sign}`;
+      break;
+    case "reply":
+      body = `${open} thanks for getting back to me. ${ctxSentence} [Your answer to their last point goes here.]${sign}`;
+      break;
+    default: /* follow-up */
+      body = `${open} circling back while it's fresh. ${ctxSentence} [Where did you leave it? One line.] Still glad to help if it's useful.${sign}`;
+      break;
+  }
+  if (tone === "Direct") body = body.replace("I wanted to say a proper thank-you.", "Thank you.").replace("it's been a while, and you came back to mind.", "it's been a while.");
+  return body;
+}
 
 /* ---------------- helpers ---------------- */
 
@@ -79,14 +229,33 @@ function escapeHtml(s) {
 
 const logEl = $("#action-log");
 const speakToggle = $("#speak-toggle");
+let forceSpeak = false; /* reserved: series speech is handled by speakSeries */
+let narrateSilent = false; /* Listen mode logs lines without speaking each one */
 
 function speak(text, force) {
   if (!("speechSynthesis" in window)) return;
-  if (!force && !speakToggle.checked) return;
+  if (!force && !forceSpeak && !speakToggle.checked) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 1.03;
   window.speechSynthesis.speak(u);
+}
+
+/* Speak a whole series (Listen mode): cancel once, then let the
+   utterances queue so the day reads aloud in order. */
+function speakSeries(lines) {
+  if (!("speechSynthesis" in window)) return false;
+  window.speechSynthesis.cancel();
+  lines.forEach(text => {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.03;
+    window.speechSynthesis.speak(u);
+  });
+  return true;
+}
+
+function tick() {
+  try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) { /* optional */ }
 }
 
 function narrate(text, cls) {
@@ -96,7 +265,7 @@ function narrate(text, cls) {
   logEl.appendChild(li);
   while (logEl.children.length > 60) logEl.removeChild(logEl.firstChild);
   logEl.scrollTop = logEl.scrollHeight;
-  speak(text);
+  if (!narrateSilent) speak(text);
 }
 
 function narrateUser(text) {
@@ -141,11 +310,11 @@ async function typeInto(textarea, text) {
 
 /* ---------------- rendering ---------------- */
 
-const VIEW_TITLES = { messages: "Messages", thread: "Conversation", queue: "Outreach Queue", approvals: "Approvals" };
+const VIEW_TITLES = { today: "Today", messages: "Messages", thread: "Conversation", queue: "Outreach Queue", approvals: "Approvals" };
 
 function switchView(name) {
   state.activeView = name;
-  ["messages", "thread", "queue", "approvals"].forEach(v => {
+  ["today", "messages", "thread", "queue", "approvals"].forEach(v => {
     $("#view-" + v).hidden = v !== name;
   });
   const tabName = name === "thread" ? "messages" : name;
@@ -162,6 +331,75 @@ function updateBadges() {
   const ba = $("#badge-approvals");
   ba.hidden = state.approvals.length === 0;
   ba.textContent = state.approvals.length;
+}
+
+/* ---------------- Today: the daily habit ---------------- */
+
+function nextAction() {
+  if (state.approvals.length > 0) {
+    return { kind: "approvals", label: `Decide on ${state.approvals.length} waiting draft${state.approvals.length === 1 ? "" : "s"}`,
+      sub: "Your decision is the only step left — one tap or one word." };
+  }
+  const unread = state.threads.find(t => t.unread);
+  if (unread) {
+    return { kind: "reply", label: `Reply to ${unread.name}`,
+      sub: `${unread.org} is waiting. Reach reads it, drafts, you approve.` };
+  }
+  const waiting = state.queue.find(q => !q.suppressed && q.status === "waiting" && q.fit);
+  if (waiting) {
+    return { kind: "draft", refId: waiting.id, label: `${MOVE_LABELS[waiting.move] || "Reach out"} — ${waiting.name}`,
+      sub: `One draft, from what's on record about ${firstName(waiting.name)}. Nothing sends without you.` };
+  }
+  const thank = state.queue.find(q => !q.suppressed && q.move === "thank" && q.status !== "sent" && q.status !== "skipped");
+  if (thank && !store.day.kinds.includes("thank")) {
+    return { kind: "draft", refId: thank.id, label: `Thank ${thank.name}`, sub: "A thank-you is the cheapest warmth there is." };
+  }
+  const recon = state.queue.find(q => !q.suppressed && q.move === "reconnect" && q.status !== "sent" && q.status !== "skipped");
+  if (recon && !store.day.kinds.includes("reconnect")) {
+    return { kind: "draft", refId: recon.id, label: `Reconnect with ${recon.name}`, sub: "Warm connections go cold quietly. This one takes a minute." };
+  }
+  return null;
+}
+
+function renderToday() {
+  const greetEl = $("#today-greeting");
+  if (!greetEl) return;
+  const h = new Date().getHours();
+  const part = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  const name = (store.profile.name || "").trim();
+  greetEl.textContent = name ? `${part}, ${firstName(name)}.` : `${part}.`;
+  const touches = Math.min(store.day.touches, 3);
+  $$("#today-sparks .spark").forEach((s, i) => s.classList.toggle("lit", i < touches));
+  $("#today-progress-text").textContent = store.day.touches >= 3
+    ? `Three touches done today — the habit is the whole game.`
+    : `${store.day.touches} of 3 touches today. One warm message counts.`;
+  const na = nextAction();
+  const btn = $("#next-action-btn");
+  if (na) {
+    btn.disabled = false;
+    $("#next-action-label").textContent = na.label;
+    $("#next-action-sub").textContent = na.sub;
+    $("#today-clear").hidden = true;
+  } else {
+    btn.disabled = true;
+    $("#next-action-label").textContent = "Nothing needs you right now";
+    $("#next-action-sub").textContent = "Replies answered, drafts decided, queue warm.";
+    $("#today-clear").hidden = false;
+  }
+  const unreadCount = state.threads.filter(t => t.unread).length;
+  $("#mission-reply-count").textContent = unreadCount ? `${unreadCount} unread` : "All answered";
+  const thankQ = state.queue.find(q => q.move === "thank" && !q.suppressed);
+  $("#mission-thank-count").textContent = thankQ ? (thankQ.status === "sent" ? "Thanked today" : `For ${thankQ.name}`) : "Nobody waiting";
+  const reconQ = state.queue.find(q => q.move === "reconnect" && !q.suppressed);
+  $("#mission-reconnect-count").textContent = reconQ ? (reconQ.status === "sent" ? "Reconnected" : `For ${reconQ.name}`) : "Nobody waiting";
+}
+
+async function runNextAction() {
+  const na = nextAction();
+  if (!na) { narrate("You're clear — every warm connection is warm.", "log-done"); switchView("today"); return; }
+  if (na.kind === "approvals") { switchView("approvals"); narrate(`${state.approvals.length} draft${state.approvals.length === 1 ? "" : "s"} waiting on your decision. Read, edit if you like, then approve — or copy one out to a real app.`); return; }
+  if (na.kind === "reply") return flowReply();
+  if (na.kind === "draft") return flowDraftOne(na.refId);
 }
 
 function renderThreads() {
@@ -202,27 +440,38 @@ function renderQueue() {
     drafted: ["Draft waiting for you", "status-drafted"],
     sent: ["Sent this session", "status-sent"],
     skipped: ["Skipped by you", "status-waiting"],
+    saved: ["Draft saved for later", "status-drafted"],
     suppressed: ["Do not contact", "status-suppressed"]
   };
   ul.innerHTML = state.queue.map(q => {
     const [label, cls] = labels[q.status] || labels.waiting;
+    const canDraft = !q.suppressed && (q.status === "waiting" || q.status === "saved");
     return `<li><article class="queue-card" data-queue="${q.id}">
       <h3>${escapeHtml(q.name)}</h3>
-      <p class="queue-org">${escapeHtml(q.org)}</p>
+      <p class="queue-org">${escapeHtml(q.org)}${q.move ? ` · ${escapeHtml(MOVE_LABELS[q.move] || "Follow up")}` : ""}${q.user ? ` · <span class="yours-tag">Added by you</span>` : ""}</p>
       ${q.suppressed
         ? `<p class="suppress-note"><strong>Do not contact.</strong> ${escapeHtml(q.suppressReason)}</p>`
-        : `<p class="fit-note"><strong>Why them:</strong> ${escapeHtml(q.fit)}</p>`}
+        : `<p class="fit-note"><strong>Why them:</strong> ${escapeHtml(q.fit || "No context on record — Reach will hold, not invent one.")}</p>`}
       <p class="queue-status ${cls}">${label}</p>
+      ${canDraft ? `<button type="button" class="queue-draft-btn" data-draft="${q.id}">Draft for ${escapeHtml(firstName(q.name))}</button>` : ""}
     </article></li>`;
   }).join("");
+  $$("[data-draft]", ul).forEach(b => b.addEventListener("click", () => flowDraftOne(b.dataset.draft)));
+  renderToday();
+}
+
+function draftKindLabel(a) {
+  if (a.kind === "reply") return "Reply";
+  if (a.kind === "studio") return `${MOVE_LABELS[a.move] || "Draft"} · from the Draft studio`;
+  return "Outreach";
 }
 
 function renderApprovals() {
   const wrap = $("#approval-list");
-  $("#approvals-empty").hidden = state.approvals.length > 0;
+  $("#approvals-empty").hidden = state.approvals.length > 0 || state.saved.length > 0;
   wrap.innerHTML = state.approvals.map(a => `
     <article class="approval-card" data-approval="${a.id}">
-      <p class="approval-kind">${a.kind === "reply" ? "Reply" : "Outreach"} · waiting for your decision</p>
+      <p class="approval-kind">${escapeHtml(draftKindLabel(a))} · waiting for your decision</p>
       <p class="approval-to">To: ${escapeHtml(a.toName)} · ${escapeHtml(a.org)}</p>
       <label class="visually-hidden" for="draft-${a.id}">Draft message to ${escapeHtml(a.toName)} — edit if you like, then approve the exact text</label>
       <textarea class="approval-draft" id="draft-${a.id}" rows="6">${escapeHtml(a.text)}</textarea>
@@ -231,24 +480,146 @@ function renderApprovals() {
         <button type="button" class="skip-btn" data-listen="${a.id}">Listen</button>
         <button type="button" class="skip-btn" data-skip="${a.id}">Skip</button>
       </div>
+      <div class="approval-actions approval-actions-secondary">
+        <button type="button" class="mini-btn" data-copy="${a.id}">Copy</button>
+        <button type="button" class="mini-btn" data-share="${a.id}">Share</button>
+        <button type="button" class="mini-btn" data-save="${a.id}">Save for later</button>
+      </div>
+      <p class="bridge-note">Copy or Share takes this exact text into a real app on your phone — the honest bridge until connectors land.</p>
     </article>`).join("");
   $$("[data-approve]", wrap).forEach(b => b.addEventListener("click", () => approveApproval(b.dataset.approve)));
   $$("[data-skip]", wrap).forEach(b => b.addEventListener("click", () => skipApproval(b.dataset.skip)));
+  $$("[data-copy]", wrap).forEach(b => b.addEventListener("click", () => copyApproval(b.dataset.copy)));
+  $$("[data-share]", wrap).forEach(b => b.addEventListener("click", () => shareApproval(b.dataset.share)));
+  $$("[data-save]", wrap).forEach(b => b.addEventListener("click", () => saveApproval(b.dataset.save)));
   $$("[data-listen]", wrap).forEach(b => b.addEventListener("click", () => {
     const a = state.approvals.find(x => x.id === b.dataset.listen);
     const ta = a && $("#draft-" + a.id);
     if (ta) speak(ta.value, true);
   }));
+
+  const savedWrap = $("#saved-list");
+  $("#saved-heading").hidden = state.saved.length === 0;
+  savedWrap.innerHTML = state.saved.map(s => `
+    <article class="approval-card saved-card" data-saved="${s.id}">
+      <p class="approval-kind">Saved for later · ${escapeHtml(MOVE_LABELS[s.move] || "Draft")}</p>
+      <p class="approval-to">To: ${escapeHtml(s.toName)} · ${escapeHtml(s.org)}</p>
+      <p class="saved-text">${escapeHtml(s.text)}</p>
+      <div class="approval-actions">
+        <button type="button" class="mini-btn" data-restore="${s.id}">Back to approvals</button>
+        <button type="button" class="mini-btn" data-copy-saved="${s.id}">Copy</button>
+        <button type="button" class="mini-btn" data-drop-saved="${s.id}">Discard</button>
+      </div>
+    </article>`).join("");
+  $$("[data-restore]", savedWrap).forEach(b => b.addEventListener("click", () => restoreSaved(b.dataset.restore)));
+  $$("[data-copy-saved]", savedWrap).forEach(b => b.addEventListener("click", () => {
+    const s = state.saved.find(x => x.id === b.dataset.copySaved);
+    if (s) copyText(s.text, s.toName, true);
+  }));
+  $$("[data-drop-saved]", savedWrap).forEach(b => b.addEventListener("click", () => {
+    const idx = state.saved.findIndex(x => x.id === b.dataset.dropSaved);
+    if (idx === -1) return;
+    const s = state.saved[idx];
+    state.saved.splice(idx, 1);
+    const q = state.queue.find(x => x.id === s.refId);
+    if (q && q.status === "saved") { q.status = "waiting"; renderQueue(); }
+    persistSaved();
+    renderApprovals();
+    narrate(`Discarded the saved draft for ${s.toName}.`);
+  }));
   updateBadges();
+  renderToday();
 }
 
 /* ---------------- approvals: the human decision ---------------- */
 
-function addApproval(kind, refId, toName, org, text) {
-  const a = { id: "a" + (++approvalSeq), kind, refId, toName, org, text };
+function addApproval(kind, refId, toName, org, text, move) {
+  const a = { id: "a" + (++approvalSeq), kind, refId, toName, org, text, move: move || "" };
   state.approvals.push(a);
   renderApprovals();
   return a;
+}
+
+/* Copy / Share: the honest bridge to real apps today. The text you
+   approved-by-eye leaves with you — Reach sends nothing itself. */
+async function copyText(text, toName, fromSaved) {
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    ok = true;
+  } catch (_) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "absolute"; ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try { ok = document.execCommand("copy"); } catch (__) { ok = false; }
+    document.body.removeChild(ta);
+  }
+  if (ok) {
+    narrate(fromSaved
+      ? `Copied the saved draft for ${toName} — paste it into any app on your phone.`
+      : `Copied the draft for ${toName} — paste it into any app on your phone. That counts as a touch.`, "log-done");
+    if (!fromSaved) recordTouch("copy", toName);
+  } else {
+    narrate("Copy didn't work in this browser — the text is in the card; long-press to copy it by hand.");
+  }
+  return ok;
+}
+
+function approvalCurrentText(a) {
+  const ta = $("#draft-" + a.id);
+  return ta ? ta.value : a.text;
+}
+
+function copyApproval(id) {
+  const a = state.approvals.find(x => x.id === id);
+  if (a) copyText(approvalCurrentText(a), a.toName, false);
+}
+
+async function shareApproval(id) {
+  const a = state.approvals.find(x => x.id === id);
+  if (!a) return;
+  const text = approvalCurrentText(a);
+  if (navigator.share) {
+    try {
+      await navigator.share({ text });
+      narrate(`Shared the draft for ${a.toName} — send it from the app you picked. That counts as a touch.`, "log-done");
+      recordTouch("share", a.toName);
+      return;
+    } catch (_) { /* dismissed — fall through to copy */ }
+  }
+  copyText(text, a.toName, false);
+}
+
+function saveApproval(id) {
+  const idx = state.approvals.findIndex(a => a.id === id);
+  if (idx === -1) return;
+  const a = state.approvals[idx];
+  a.text = approvalCurrentText(a);
+  state.approvals.splice(idx, 1);
+  state.saved.push({ id: a.id, kind: a.kind, refId: a.refId, toName: a.toName, org: a.org, text: a.text, move: a.move || "" });
+  if (a.kind !== "reply") {
+    const q = state.queue.find(x => x.id === a.refId);
+    if (q && q.status === "drafted") { q.status = "saved"; renderQueue(); }
+  }
+  persistSaved();
+  renderApprovals();
+  narrate(`Saved the draft for ${a.toName} for later. It'll wait here — no expiry, no nagging.`);
+}
+
+function restoreSaved(id) {
+  const idx = state.saved.findIndex(s => s.id === id);
+  if (idx === -1) return;
+  const s = state.saved[idx];
+  state.saved.splice(idx, 1);
+  addApproval(s.kind || "outreach", s.refId, s.toName, s.org, s.text, s.move);
+  const q = state.queue.find(x => x.id === s.refId);
+  if (q && q.status === "saved") { q.status = "drafted"; renderQueue(); }
+  persistSaved();
+  renderApprovals();
+  narrate(`The draft for ${s.toName} is back in Approvals, waiting for your decision.`);
 }
 
 async function approveApproval(id) {
@@ -272,15 +643,19 @@ async function approveApproval(id) {
     renderThread();
     renderThreads();
     updateBadges();
+    tick();
+    recordTouch("reply", t.name);
     narrate(`Reply sent to ${t.name}. It's in the thread now — you can scroll up and check it.`, "log-done");
   } else {
     const q = state.queue.find(x => x.id === a.refId);
-    q.status = "sent";
+    if (q) q.status = "sent";
     state.sentCount += 1;
     renderQueue();
     switchView("queue");
-    await agentTouch($(`[data-queue="${q.id}"]`), `You approved it. Sending to ${q.name} at ${q.org}…`);
-    narrate(`Sent to ${q.name}. That's send number ${state.sentCount} this session.`, "log-done");
+    await agentTouch(q ? $(`[data-queue="${q.id}"]`) : null, `You approved it. Sending to ${a.toName} at ${a.org}…`);
+    tick();
+    recordTouch(a.move || "outreach", a.toName);
+    narrate(`Sent to ${a.toName}. That's send number ${state.sentCount} this session.`, "log-done");
     narrate("The real programme spaces sends out and caps each mailbox at 90 a day — Reach keeps that pace instead of blasting the whole queue at once.");
   }
 }
@@ -290,9 +665,9 @@ function skipApproval(id) {
   if (idx === -1) return;
   const a = state.approvals[idx];
   state.approvals.splice(idx, 1);
-  if (a.kind === "outreach") {
+  if (a.kind !== "reply") {
     const q = state.queue.find(x => x.id === a.refId);
-    if (q) { q.status = "skipped"; renderQueue(); }
+    if (q && q.status === "drafted") { q.status = "skipped"; renderQueue(); }
   }
   renderApprovals();
   narrate(`Skipped the draft for ${a.toName}. Nothing was sent.`);
@@ -302,7 +677,8 @@ function skipApproval(id) {
 
 function setBusy(b) {
   state.busy = b;
-  $$(".flow-btn").forEach(btn => { btn.disabled = b; });
+  $$(".flow-btn, .mission-btn, #next-action-btn, #studio-generate").forEach(btn => { btn.disabled = b; });
+  if (!b) renderToday();
 }
 
 async function flowReply() {
@@ -362,13 +738,19 @@ async function flowQueue() {
       }
       if (q.status === "sent") { narrate(`${q.name} — already sent this session.`); continue; }
       if (q.status === "drafted") { narrate(`${q.name} — a draft is already waiting for your approval.`); continue; }
+      if (q.status === "saved") { narrate(`${q.name} — you saved that draft for later; it's waiting in Approvals.`); continue; }
       if (q.status === "skipped") { narrate(`${q.name} — you skipped their last draft, so I'll leave them alone unless you ask again.`); continue; }
+      if (!q.fit) {
+        await agentTouch(card, "");
+        narrate(`Holding ${q.name} at ${q.org}. There's no reason-on-record for contacting them, and I won't invent one — add the context and I'll draft.`, "log-refusal");
+        continue;
+      }
       await agentTouch(card, `Reading the fit note for ${q.name} at ${q.org}: ${q.fit}`);
       narrate(`Drafting a personalised message for ${q.name}…`);
       await wait(900);
       q.status = "drafted";
       renderQueue();
-      addApproval("outreach", q.id, q.name, q.org, q.draft);
+      addApproval("outreach", q.id, q.name, q.org, q.draft || generateDraft(q, q.move || "follow-up"), q.move || "follow-up");
       made += 1;
       narrate(`Draft for ${q.name} is in Approvals.`);
     }
@@ -404,6 +786,125 @@ async function flowSummarize() {
   }
 }
 
+/* Draft for one person — used by queue cards, Today missions, and
+   the Next best action button. */
+async function flowDraftOne(id) {
+  if (state.busy) return;
+  const q = state.queue.find(x => x.id === id);
+  if (!q) return;
+  if (q.suppressed) {
+    switchView("queue");
+    narrate(`${q.name} is on the do-not-contact list — ${q.suppressReason} I won't draft anything for them, ever.`, "log-refusal");
+    return;
+  }
+  if (state.approvals.some(a => a.refId === q.id && a.kind !== "reply")) {
+    switchView("approvals");
+    narrate(`A draft for ${q.name} is already written and waiting in Approvals.`, "log-done");
+    return;
+  }
+  if (state.saved.some(s => s.refId === q.id)) {
+    switchView("approvals");
+    narrate(`You already have a draft for ${q.name} saved for later — it's under Approvals, below the waiting cards. Restore it when you're ready.`, "log-done");
+    return;
+  }
+  if (q.status === "sent") { narrate(`${q.name} — already sent this session.`); return; }
+  setBusy(true);
+  try {
+    switchView("queue");
+    renderQueue();
+    const card = $(`[data-queue="${q.id}"]`);
+    if (!q.fit) {
+      await agentTouch(card, "");
+      narrate(`Holding ${q.name}. No context on record — I won't invent a reason. Add why them, and I'll draft in seconds.`, "log-refusal");
+      return;
+    }
+    await agentTouch(card, `Reading what's on record for ${q.name} at ${q.org}: ${q.fit}`);
+    narrate(`Drafting a ${MOVE_LABELS[q.move] || "follow-up"} in your ${store.profile.tone || "Warm"} tone…`);
+    await wait(900);
+    q.status = "drafted";
+    renderQueue();
+    addApproval("outreach", q.id, q.name, q.org, q.draft || generateDraft(q, q.move || "follow-up"), q.move || "follow-up");
+    switchView("approvals");
+    narrate(`Draft for ${q.name} is in Approvals. Read it, edit it, approve it — or copy it into a real app instead.`, "log-done");
+  } finally {
+    setBusy(false);
+  }
+}
+
+/* ---------------- Listen mode: the day, read aloud ---------------- */
+
+async function flowListen() {
+  if (state.busy) return;
+  setBusy(true);
+  try {
+    const lines = [];
+    const name = (store.profile.name || "").trim();
+    lines.push(name ? `Here's your day, ${firstName(name)}.` : "Here's your day.");
+    const unreads = state.threads.filter(t => t.unread);
+    if (unreads.length) {
+      lines.push(`Messages: ${unreads.length} unread — ${unreads.map(t => `${t.name} at ${t.org}`).join("; ")}.`);
+    } else {
+      lines.push("Messages: nothing unread. Every reply is answered.");
+    }
+    const na = nextAction();
+    lines.push(na ? `Your next best action: ${na.label}. ${na.sub}` : "You're clear — every warm connection is warm.");
+    if (state.approvals.length) {
+      lines.push(`${state.approvals.length} draft${state.approvals.length === 1 ? "" : "s"} waiting for your decision:`);
+      state.approvals.forEach(a => lines.push(`For ${a.toName}: ${approvalCurrentText(a).split(/(?<=[.!?])\s/)[0]}`));
+    }
+    lines.push(`Touches today: ${store.day.touches} of 3.`);
+    narrate("Listen mode — reading your day aloud, in order.", "log-done");
+    narrateSilent = true;
+    lines.forEach(l => narrate(l));
+    narrateSilent = false;
+    const spoke = speakSeries(lines);
+    if (!spoke) narrate("This browser can't speak aloud, so your day is in the log above instead — a screen reader will read it the same way.");
+  } finally {
+    setBusy(false);
+  }
+}
+
+/* ---------------- Guided demo: Mike's 90-second judging flow ---------------- */
+
+async function flowTour() {
+  if (state.busy) return;
+  setBusy(true);
+  try {
+    narrate("Welcome to Reach — the 90-second tour. The promise in one line: never let a warm connection go cold.", "log-done");
+    switchView("today");
+    await wait(1400);
+    narrate("This is Today. Not an inbox — a short list of the people who'd notice if you showed up today: one reply, one thank-you, one reconnection. Three touches, two minutes each.");
+    await wait(1400);
+    const unread = state.threads.find(t => t.unread);
+    if (unread && !state.approvals.some(a => a.kind === "reply" && a.refId === unread.id)) {
+      setBusy(false);
+      await flowReply();
+      setBusy(true);
+    }
+    if (state.approvals.length) {
+      switchView("approvals");
+      await wait(1200);
+      narrate("Here's the whole product in one card. Reach read the screen, did the research step, and typed this draft. In real use the next tap is always, only, yours — for this tour, I'll press approve as your stand-in so you can watch the loop close.");
+      await wait(1600);
+      await approveApproval(state.approvals[0].id);
+      await wait(800);
+    }
+    const thankQ = state.queue.find(q => q.move === "thank" && !q.suppressed && q.status === "waiting");
+    if (thankQ) {
+      setBusy(false);
+      await flowDraftOne(thankQ.id);
+      setBusy(true);
+      narrate("That draft was built only from what's on record about " + thankQ.name.split(" ")[0] + " — anything Reach didn't know became a bracketed prompt, never an invented detail. It waits for a human, like everything here.");
+      await wait(1200);
+    }
+    switchView("today");
+    renderToday();
+    narrate(`Tour complete. Touches today: ${store.day.touches} of 3 — the spark row at the top of Today is the habit, made visible. Everything you add stays on this phone: no account, nothing uploaded. Reach drafts; you decide.`, "log-done");
+  } finally {
+    setBusy(false);
+  }
+}
+
 /* ---------------- commands (typed or spoken) ---------------- */
 
 async function handleCommand(raw) {
@@ -421,10 +922,34 @@ async function handleCommand(raw) {
     else narrate("There's no draft waiting for approval right now.");
     return;
   }
+  if (t === "next" || t.includes("next action") || t.includes("next best")) return runNextAction();
+  if (t === "copy" || t.startsWith("copy")) {
+    const a = state.approvals[0];
+    if (a) return copyApproval(a.id);
+    narrate("No draft is waiting to copy. Ask me to reply or work the queue first.");
+    return;
+  }
+  if (t === "skip" || t.startsWith("skip")) {
+    const a = state.approvals[0];
+    if (a) { skipApproval(a.id); return; }
+    narrate("No draft is waiting to skip.");
+    return;
+  }
+  if (t.includes("listen") || t.includes("read my day") || t.includes("read the day")) return flowListen();
+  if (t.includes("today") || t === "home") { switchView("today"); narrate("Today's three touches are on the stage — one tap on Next best action and I'll walk it with you."); return; }
+  if (t.includes("thank")) {
+    const q = state.queue.find(x => x.move === "thank" && !x.suppressed);
+    if (q) return flowDraftOne(q.id);
+  }
+  if (t.includes("reconnect")) {
+    const q = state.queue.find(x => x.move === "reconnect" && !x.suppressed);
+    if (q) return flowDraftOne(q.id);
+  }
+  if (t.includes("tour") || t.includes("show me")) return flowTour();
   if (t.includes("summar") || t.includes("what do you see") || t.includes("what can you see")) return flowSummarize();
   if (t.includes("queue") || t.includes("outreach")) return flowQueue();
   if (t.includes("reply") || t.includes("unread") || t.includes("message")) return flowReply();
-  narrate("In this demo I can do three things: reply to the first unread message, work the outreach queue, or summarize what I see. Try a big button — or type “approve” when a draft is waiting.");
+  narrate("I can: reply to the first unread message, work the outreach queue, draft a thank-you or a reconnection, listen to your day, or summarize what I see. Try “next” for your next best action — or tap a big button.");
 }
 
 $$(".flow-btn").forEach(btn => btn.addEventListener("click", () => {
@@ -432,6 +957,8 @@ $$(".flow-btn").forEach(btn => btn.addEventListener("click", () => {
   if (f === "reply") { narrateUser("Reply to the first unread message"); flowReply(); }
   if (f === "queue") { narrateUser("Work the outreach queue"); flowQueue(); }
   if (f === "summarize") { narrateUser("Summarize what you see"); flowSummarize(); }
+  if (f === "tour") { narrateUser("Show me Reach"); flowTour(); }
+  if (f === "listen") { narrateUser("Listen to my day"); flowListen(); }
 }));
 
 $("#command-form").addEventListener("submit", e => {
@@ -489,12 +1016,143 @@ $("#composer-form").addEventListener("submit", e => {
   narrate("You sent that one yourself, straight from the composer.");
 });
 
+/* ---------------- Today wiring: next action + missions ---------------- */
+
+$("#next-action-btn").addEventListener("click", () => { narrateUser("Next best action"); runNextAction(); });
+$$(".mission-btn").forEach(btn => btn.addEventListener("click", () => {
+  const m = btn.dataset.mission;
+  narrateUser(btn.textContent.trim().replace(/\s+/g, " "));
+  if (m === "reply") flowReply();
+  if (m === "thank") { const q = state.queue.find(x => x.move === "thank" && !x.suppressed); if (q) flowDraftOne(q.id); else narrate("No thank-you is waiting — add someone from the Outreach queue."); }
+  if (m === "reconnect") { const q = state.queue.find(x => x.move === "reconnect" && !x.suppressed); if (q) flowDraftOne(q.id); else narrate("No reconnection is waiting — add someone from the Outreach queue."); }
+}));
+$("#today-add-btn").addEventListener("click", () => {
+  switchView("queue");
+  const el = $("#person-name");
+  if (el) el.focus();
+});
+
+/* ---------------- Your people: add-person form ---------------- */
+
+$("#person-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("#person-name").value.trim();
+  const org = $("#person-org").value.trim();
+  const fit = $("#person-fit").value.trim();
+  const move = $("#person-move").value;
+  const dnc = $("#person-dnc").checked;
+  if (!name) { narrate("A name is the one thing I can't guess — add that and I'll keep the rest."); return; }
+  if (!dnc && !fit) { narrate(`I need one line of context for ${name} — why them? I draft only from what's on record, never from guesses.`); return; }
+  const person = {
+    id: "u-" + Date.now().toString(36),
+    name, org: org || "—", fit, move,
+    suppressed: dnc,
+    suppressReason: dnc ? "You marked this person do-not-contact." : "",
+    draft: "", status: dnc ? "suppressed" : "waiting", user: true
+  };
+  state.queue.push(person);
+  persistPeople();
+  renderQueue();
+  populateStudioPeople();
+  e.target.reset();
+  switchView("queue");
+  if (dnc) narrate(`${name} is on your do-not-contact list. I'll never draft for them, and I'll say so if they ever come up.`, "log-refusal");
+  else narrate(`${name} is in your queue, saved on this phone. Tap “Draft” on their card, or let the Next best action find them.`, "log-done");
+});
+
+/* ---------------- Draft studio ---------------- */
+
+function populateStudioPeople() {
+  const sel = $("#studio-person");
+  const people = state.queue.filter(q => !q.suppressed);
+  sel.innerHTML = people.map(q => `<option value="${escapeHtml(q.id)}">${escapeHtml(q.name)} · ${escapeHtml(q.org)}</option>`).join("");
+}
+
+$("#studio-generate").addEventListener("click", () => {
+  const person = state.queue.find(q => q.id === $("#studio-person").value);
+  if (!person) { narrate("Pick a person first — the studio drafts for people in your queue."); return; }
+  const move = $("#studio-move").value;
+  narrateUser(`Draft a ${MOVE_LABELS[move] || "message"} for ${person.name}`);
+  if (!person.fit) { narrate(`Holding ${person.name} — no context on record, and the studio won't invent one.`); return; }
+  const text = generateDraft(person, move);
+  addApproval("studio", person.id, person.name, person.org, text, move);
+  switchView("approvals");
+  narrate(`Studio draft for ${person.name} is in Approvals — built only from what's on record, in your ${store.profile.tone || "Warm"} tone. Approve it here, or copy it into a real app.`, "log-done");
+});
+
+/* ---------------- Profile: make it yours + trust controls ---------------- */
+
+function fillProfileForm() {
+  $("#profile-name").value = store.profile.name || "";
+  $("#profile-role").value = store.profile.role || "";
+  $("#profile-tone").value = store.profile.tone || "Warm";
+  $("#profile-signoff").value = store.profile.signoff || "";
+  $("#profile-intention").value = store.profile.intention || "Keep in touch with people who matter";
+}
+
+$("#profile-form").addEventListener("submit", e => {
+  e.preventDefault();
+  store.profile = {
+    name: $("#profile-name").value.trim(),
+    role: $("#profile-role").value.trim(),
+    tone: $("#profile-tone").value,
+    signoff: $("#profile-signoff").value.trim(),
+    intention: $("#profile-intention").value
+  };
+  persist();
+  renderToday();
+  narrate(storageOK
+    ? `Saved — on this phone only. New drafts will sound like you: ${store.profile.tone} tone${store.profile.signoff ? `, signed “${store.profile.signoff}”` : ""}.`
+    : "Saved for this session — this browser isn't keeping local storage, so it won't survive a reload.", "log-done");
+});
+
+$("#export-btn").addEventListener("click", () => {
+  const payload = {
+    exportedFrom: "Reach v2 (this phone, local data only)",
+    profile: store.profile,
+    people: state.queue.filter(q => q.user),
+    savedDrafts: state.saved,
+    history: store.history
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "reach-my-data.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  narrate("Exported — one JSON file with your profile, your people, saved drafts, and touch history. It came from this phone and goes only where you send it.", "log-done");
+});
+
+$("#reset-demo-btn").addEventListener("click", () => {
+  store.people = [];
+  store.saved = [];
+  store.day = freshDay();
+  store.history = [];
+  persist();
+  narrate("Demo reset — your added people, saved drafts, and today's touches are cleared; your profile stays. Reloading the seeds…", "log-done");
+  setTimeout(() => window.location.reload(), 900);
+});
+
+$("#erase-btn").addEventListener("click", () => {
+  const sure = window.confirm("Erase everything Reach keeps on this phone — profile, your people, saved drafts, history — and return to the fresh demo?");
+  if (!sure) { narrate("Erase cancelled. Nothing was touched."); return; }
+  try { window.localStorage.removeItem(LS_KEY); } catch (_) { /* already gone */ }
+  narrate("Erased. This phone now holds only the fictional demo data. Reloading…", "log-done");
+  setTimeout(() => window.location.reload(), 900);
+});
+
 /* ---------------- init ---------------- */
 
 renderThreads();
 renderQueue();
 renderApprovals();
 updateBadges();
-switchView("messages");
-narrate("Reach is ready. The stage below is a demo — every person on it is fictional, and nothing here can send anything real.");
-narrate("Try a big button: I'll reply to the first unread message, work the outreach queue, or summarize what I see. I draft; you decide.");
+populateStudioPeople();
+fillProfileForm();
+renderToday();
+switchView("today");
+narrate("Reach is ready. Never let a warm connection go cold — that's the whole idea.");
+narrate("Today is on the stage: three small touches, each one read, drafted, and waiting on your approval. Tap “Next best action”, or take the 90-second tour in the panel.");

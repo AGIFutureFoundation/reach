@@ -92,21 +92,32 @@ client-side `session_name` on each run — a label, not a credential),
 so a judge who connects their own key sees Reach's runs collect
 under the same name in their own workspace.
 
-## PhoneUse — the local execution layer (v2.3)
+## PhoneUse — the local execution layer (v2.3; bridge v2.4)
 
 | | |
 |---|---|
-| **What it is** | PhoneUse Local — the hackathon sponsor PhoneUse's open-source local iPhone automation. A Mac controls a USB-connected iPhone via WebDriverAgent: live video, OCR screen reading, tap / type / scroll, driven by natural-language tasks. **Our fork: https://github.com/AGIFutureFoundation/phoneuse** (MIT). |
-| **Surfaces** | A local REST API at `http://127.0.0.1:8765` and an MCP server. Reach's adapter uses only the health check: `GET /health`, which answers ok. |
-| **Auth** | **None — there is no key.** The store holds exactly one boolean, `phoneuseOk`: whether the last detection succeeded. |
-| **Browser limits** | From a public HTTPS page, browsers usually block calls to a local service (mixed-content and local-network rules), so detection from the live site will usually fail. The panel copy treats that as the normal case, in writing, in advance — never as an error state. A short timeout (2.5s) keeps the check from hanging the panel. |
+| **What it is** | PhoneUse Local — the hackathon sponsor PhoneUse's open-source local iPhone automation. A Mac controls a USB-connected iPhone via WebDriverAgent: live video, OCR screen reading, tap / type / scroll, driven by natural-language tasks. **Our fork: https://github.com/AGIFutureFoundation/phoneuse** (MIT; the fork's `docs/REACH.md` tells this integration from the PhoneUse side, and `examples/reach-bridge/` is a Mac-side client sketch). |
+| **Surfaces** | A local REST API at `http://127.0.0.1:8765` and an MCP server. Reach uses `GET /health` (detection) and, since v2.4, `POST /api/ai/tasks` (the bridge) — both shapes read from the fork's `docs/INTEGRATIONS.md` and `platform/backend/task_api.py` / `api.py` on 2026-11-13. |
+| **Detection** | `GET /health`, unauthenticated, answers ok. The store holds exactly one boolean for detection, `phoneuseOk` — there is no detection key, and the harness asserts the stored record carries no PhoneUse key field. |
+| **Bridge auth** | `POST /api/ai/tasks` requires `Authorization: Bearer <key>`. Reach takes a **scoped key** (created with the fork's `platform/create-key.py` — one phone, with an expiry) plus the device ID, and keeps both in **page memory only**: never in the store, never exported, gone on reload. The key is sent only to `127.0.0.1:8765`. |
+| **Bridge body** | `{ "device_id": "<udid>", "task": "<the approved card text>" }`. The `task` field is the approval card's current text **byte-for-byte** — no instruction template, no additions, no paraphrase. The harness asserts `JSON.parse(postedBody).task === approvalCurrentText(card)`, and that the key appears nowhere in localStorage. (A Mac-side bridge may wrap the same text, unaltered, in a fixed instruction — see the fork's sketch, which asserts the invariant in code.) |
+| **Origin reality** | The API allowlists exactly two browser origins — `http://localhost:3109` and `http://127.0.0.1:3109`, its own web UI (verified in the fork's `platform/backend/api.py`: CORS middleware + an origin check returning 403 “Origin not allowed”). Every other origin is refused, and a public HTTPS page additionally faces mixed-content/local-network blocking. |
+| **Supported bridge configuration** | **Reach served from the allowlisted local origin on the same Mac as PhoneUse** — the booth/local setup (or the Mac-side bridge process in the fork's example). From `https://reach.agicorp.network/` the POST is expected to fail; Reach narrates the refusal with the reason, claims nothing was sent, and Copy/Share remain the bridge. A submitted task is also narrated as *submitted, not delivered* — delivery is read back on the phone. |
+| **Browser limits (detection)** | From a public HTTPS page, browsers usually block calls to a local service, so detection from the live site will usually fail. The panel copy treats that as the normal case, in writing, in advance — never as an error state. A short timeout (2.5s detection, 6s bridge) keeps the checks from hanging the panel. |
 
 **Reach behaviour.** *Detect PhoneUse* runs the health check. On ok:
-the row reads **“Connected · PhoneUse local API”** and the message
-says what that means and doesn't — detection today, task execution
-is the native-path next step. On any failure: the boolean clears and
-the honest fallback is narrated — PhoneUse is the Mac-side layer, a
-web page usually can't see it, nothing is broken.
+the row reads **“Connected · PhoneUse local API”**, and approval
+cards gain a **“Send to my phone via PhoneUse”** button (v2.4). The
+button is a delivery decision for that card's exact text — the same
+standing Copy and Share have — and it is inert without the session
+key + device ID: tapped unarmed, it narrates what's needed and sends
+nothing. On a successful submission the button retires for that
+card, a `reach.phoneuse_task` run is traced (metadata only), and the
+narration states the task is queued, not delivered. On any failure:
+the honest refusal is narrated and the card stays waiting. On
+detection failure: the boolean clears and the fallback is narrated —
+PhoneUse is the Mac-side layer, a web page usually can't see it,
+nothing is broken.
 
 **Why it belongs in Reach.** Reach's honest architecture has always
 had a deliberately smaller iOS layer: no cross-app reading exists on
@@ -116,18 +127,19 @@ PhoneUse task (REST or MCP) executed on the user's own Mac + phone —
 read the screen, tap, type, reply — and **nothing reaches PhoneUse
 that Reach didn't get a tap for**. The rails stay Reach's (draft →
 exact-copy approval → suppression and cap checks, all before the
-hand-off); the hands are PhoneUse's. Integration today is
-architectural plus this live health-check detection; the PWA does
-**not** send messages through PhoneUse, and no copy anywhere claims
-it does.
+hand-off); the hands are PhoneUse's. The hand-off code path is real
+and tested against the documented API; whether a given browser can
+reach the local API is an environment fact Reach reports, never a
+result it fakes.
 
 ## The pattern the stack shares
 
 1. **BYOK, on-device.** No Reach server exists; there is nothing to
    route keys through. The store is the same namespaced localStorage
    entry as the profile and people; keys are excluded from Export and
-   removed by Disconnect and by Erase. (PhoneUse has no key at all —
-   the store holds one boolean for it.)
+   removed by Disconnect and by Erase. (PhoneUse detection stores one
+   boolean; its bridge key is stricter still — page memory only,
+   never stored at all.)
 2. **Labels never blur.** A result is live or it is staged, and the
    UI says which, on its face, every time.
 3. **Failure is a designed path, not an error state.** Each adapter
@@ -135,8 +147,10 @@ it does.
    profile, the browser voice, the silent trace.
 4. **No keys, no change.** With the panel untouched, the app is
    behaviour-identical to v2.1 — the original assertion suites still
-   pass untouched inside the extended harness, which at v2.3 runs
-   **133 assertions, all green**: the v2 core, the v2.1 habit layer,
-   the v2.2 adapters, and the v2.3 brief / impact / judge-mode /
+   pass untouched inside the extended harness, which at v2.4 runs
+   **172 assertions, all green**: the v2 core, the v2.1 habit layer,
+   the v2.2 adapters, the v2.3 brief / impact / judge-mode /
    warmth-report / captured-snapshot / PhoneUse-detection
-   behaviours.
+   behaviours, and the v2.4 use-case packs (isolation of your list
+   proven against the store), the PhoneUse bridge (payload equality
+   proven byte-for-byte), and the Pro waitlist.

@@ -29,6 +29,7 @@
   const ELEVEN_DEFAULT_VOICE = "EXAVITQu4vr4xnSDxMaL"; /* Sarah — v2.3: chosen from the live voice list as the warmest read for a morning brief; the v2.2 default was Rachel (21m00Tcm4TlvDq8ikWAM) */
   const LANGSMITH_RUNS_URL = "https://api.smith.langchain.com/runs";
   const PHONEUSE_HEALTH_URL = "http://127.0.0.1:8765/health";
+  const PHONEUSE_TASKS_URL = "http://127.0.0.1:8765/api/ai/tasks";
 
   /* ---------------- connection state ---------------- */
 
@@ -50,17 +51,30 @@
      github.com/AGIFutureFoundation/phoneuse) runs on the user's Mac
      and drives a USB-connected iPhone via WebDriverAgent — live
      video, OCR screen reading, tap/type/scroll — behind a local REST
-     API (and an MCP server). There is no key: the "connection" is a
-     health check, GET /health on 127.0.0.1:8765, and all Reach
+     API (and an MCP server). Detection has no key: the "connection"
+     is a health check, GET /health on 127.0.0.1:8765, and all Reach
      stores is the boolean result.
+
+     The bridge (v2.4): while PhoneUse is detected, approval cards
+     offer "Send to my phone via PhoneUse", which POSTs the card's
+     exact text to /api/ai/tasks as the task payload — byte-for-byte,
+     no template, nothing added. That endpoint needs a Bearer key,
+     so the panel takes a scoped key (PhoneUse's create-key.py) and
+     the device ID — both kept in THIS PAGE'S MEMORY ONLY, never in
+     the store, gone on reload. Detection stays keyless; only the
+     hand-off asks.
 
      Honest limits: from a public HTTPS page, browsers usually block
      calls to a local service (mixed content / local-network rules),
-     so detection failing here is the NORMAL case and is narrated as
-     information, never as an error. Today this is detection only —
-     Reach does not send tasks through PhoneUse from the PWA; the
-     approved-card → PhoneUse-task hand-off is the native-path next
-     step, and the copy says exactly that. */
+     and the PhoneUse API itself allowlists only its own local
+     origins (http://localhost:3109, http://127.0.0.1:3109 — verified
+     in the fork's platform/backend/api.py). So from the public site
+     the POST is expected to be refused, and Reach narrates the
+     refusal and leaves Copy/Share in place. The supported bridge
+     configuration is Reach served from the allowlisted origin on
+     the same Mac — the booth setup. Detection failing is likewise
+     the NORMAL case from here, narrated as information, never as
+     an error. */
 
   async function phoneuseHealth() {
     if (typeof fetch !== "function") return false;
@@ -81,6 +95,49 @@
       }
     } catch (_) {
       return false;
+    }
+  }
+
+  /* The bridge session: a scoped key + device ID for THIS page
+     session only. Module memory — never the store, never exported,
+     gone when the page reloads. The key is sent only to
+     127.0.0.1:8765, as the API's Bearer auth. */
+  let puSession = { key: "", device: "" };
+
+  function setPhoneuseSession(key, device) {
+    puSession = { key: String(key || "").trim(), device: String(device || "").trim() };
+  }
+  function phoneuseSessionSet() {
+    return { key: !!puSession.key, device: !!puSession.device };
+  }
+  function phoneuseBridgeReady() {
+    return phoneuseConnected() && !!puSession.key && !!puSession.device;
+  }
+
+  /* POST the approved text as a PhoneUse prompt task. The body is
+     exactly {device_id, task} and `task` is the approved text
+     itself, character for character — the harness asserts the
+     equality. Resolves {ok, id} or {ok:false, detail}; never
+     throws, and a success means only that PhoneUse accepted a
+     task — delivery is read back on the phone, not claimed here. */
+  async function phoneuseSendTask(text) {
+    if (typeof fetch !== "function") return { ok: false, detail: "this browser can't call a local API" };
+    if (!puSession.key || !puSession.device) return { ok: false, detail: "the bridge needs a scoped key and a device ID (the PhoneUse panel keeps both in memory only)" };
+    try {
+      const timeout = new Promise(res => setTimeout(() => res(null), 6000));
+      const res = await Promise.race([fetch(PHONEUSE_TASKS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + puSession.key },
+        body: JSON.stringify({ device_id: puSession.device, task: String(text) })
+      }), timeout]);
+      if (!res) return { ok: false, detail: "the local API didn't answer in time" };
+      let data = null;
+      try { data = await res.json(); } catch (_) { /* a bare status is still a status */ }
+      if (!res.ok) return { ok: false, status: res.status, detail: `the API answered HTTP ${res.status}${data && data.detail ? " — " + data.detail : ""}` };
+      const id = data && (data.id || data.task_id);
+      return { ok: true, id: id ? String(id) : "" };
+    } catch (_) {
+      return { ok: false, detail: "the browser blocked the call to the local API" };
     }
   }
 
@@ -415,8 +472,8 @@
     persist();
     renderPanel();
     if (ok) {
-      setMsg("#msg-phoneuse", "Connected · PhoneUse local API — the health check answered ok. PhoneUse is running on this machine: the execution layer Reach's approved cards are shaped for. Today the PWA detects it; handing approved tasks to it is the native-path next step, and Reach claims nothing more.");
-      narrate("PhoneUse detected — its local API answered the health check. The iPhone execution layer is on this machine.", "log-done");
+      setMsg("#msg-phoneuse", "Connected · PhoneUse local API — the health check answered ok. PhoneUse is running on this machine: the execution layer Reach's approved cards hand off to. Approval cards now offer “Send to my phone via PhoneUse”; add a scoped key and device ID below and the bridge is armed — for this page session only.");
+      narrate("PhoneUse detected — its local API answered the health check. The iPhone execution layer is on this machine, and approval cards now carry the PhoneUse hand-off.", "log-done");
     } else {
       setMsg("#msg-phoneuse", "PhoneUse not detected on this device — and from a public web page, that's the normal result: browsers block calls from an HTTPS page to a local service. PhoneUse is the Mac-side execution layer (it runs beside your iPhone, not in this tab); nothing is broken, and no error occurred. The architecture — approved Reach cards becoming PhoneUse tasks — is in the judging guide, and our fork is github.com/AGIFutureFoundation/phoneuse.");
       narrate("PhoneUse not detected from this page — expected from a web page, since browsers block local calls. It's the Mac-side execution layer; see the repo for the architecture.");
@@ -425,10 +482,37 @@
 
   wireClick("#disconnect-phoneuse", () => {
     keys().phoneuseOk = false;
+    setPhoneuseSession("", "");
+    const k = $("#key-phoneuse"); if (k) k.value = "";
+    const d = $("#device-phoneuse"); if (d) d.value = "";
     persist();
     renderPanel();
-    setMsg("#msg-phoneuse", "Detection forgotten — the boolean is cleared from this phone. Run Detect again any time PhoneUse is up.");
+    setMsg("#msg-phoneuse", "Detection forgotten — the boolean is cleared from this phone, and the bridge session (if any) is forgotten with it. Run Detect again any time PhoneUse is up.");
+    setMsg("#msg-phoneuse-bridge", "");
     narrate("PhoneUse detection forgotten. Nothing else changed.");
+  });
+
+  wireClick("#save-phoneuse-session", () => {
+    const k = $("#key-phoneuse");
+    const d = $("#device-phoneuse");
+    setPhoneuseSession(k ? k.value : "", d ? d.value : "");
+    if (k) k.value = "";
+    const s = phoneuseSessionSet();
+    if (s.key && s.device) {
+      setMsg("#msg-phoneuse-bridge", "Bridge armed for this page session — the key and device ID live in this page's memory only and are gone on reload. Approval cards offer the hand-off while PhoneUse is detected. (The key field clears itself; that's deliberate.)");
+      narrate("PhoneUse bridge armed for this session — key and device held in memory only, never stored.", "log-done");
+    } else {
+      setMsg("#msg-phoneuse-bridge", "The bridge needs both: a scoped key (create one with PhoneUse's create-key.py — one phone, with an expiry) and the device ID shown in the PhoneUse app. Whichever is missing, add it and keep the session again.");
+    }
+    try { renderApprovals(); } catch (_) { /* approvals render on their own cycle too */ }
+  });
+
+  wireClick("#clear-phoneuse-session", () => {
+    setPhoneuseSession("", "");
+    const k = $("#key-phoneuse"); if (k) k.value = "";
+    const d = $("#device-phoneuse"); if (d) d.value = "";
+    setMsg("#msg-phoneuse-bridge", "Bridge session forgotten — the key and device ID are out of this page's memory. Detection (the boolean) is untouched.");
+    narrate("PhoneUse bridge session forgotten. Detection is untouched.");
   });
 
   /* Voice ID and project name save as they're edited, key or no key. */
@@ -450,6 +534,10 @@
     capturedResearch: CAPTURED_RESEARCH,
     defaultVoiceId: () => ELEVEN_DEFAULT_VOICE,
     phoneuseConnected,
-    phoneuseHealth
+    phoneuseHealth,
+    phoneuseBridgeReady,
+    phoneuseSendTask,
+    setPhoneuseSession,
+    phoneuseSessionSet
   };
 })();

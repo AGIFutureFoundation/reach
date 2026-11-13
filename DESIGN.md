@@ -584,3 +584,59 @@ harness now runs **133 assertions, all green** — the 89 of v2.2 plus
 state, the refusal counters, judge-mode reversal, the warmth-report
 fallback, the captured shelf's visibility rules, and PhoneUse
 detection (healthy, blocked, and forgotten).
+
+## 13 · v2.4 — the winner expansion: packs, the bridge, the business
+
+### Use-case packs — the practical answer, loadable
+
+A demo with one fictional cast answers “nice toy”; four loadable
+casts answer “who is it for”. The packs (Founder follow-ups,
+Recruiter pipeline, Nonprofit donors, Creator collabs) are scenario
+loaders on the Outreach view, and their design constraint is
+isolation: a pack occupies its own slot, your real list is stashed
+in memory and restored exactly, pack saved-drafts never reach the
+store, and the only persisted trace is `packId`, which list you
+were viewing. Schema discipline is the same as ever — one additive
+field, still v3, no destructive migration. Each pack's first person
+carries a pre-written draft and a staged research note so their
+card runs the full research → draft → approval flow, and two packs
+carry a do-not-contact person so the refusal is demonstrable inside
+a use case.
+
+### The PhoneUse bridge — the hand-off, built and bounded
+
+v2.3's §12 ended with a boundary: detection claimed, task hand-off
+not claimed. v2.4 builds the hand-off and keeps the boundary
+honest. While PhoneUse is detected, an approval card offers “Send
+to my phone via PhoneUse”: a POST to the fork's documented
+`POST /api/ai/tasks` whose task payload is the card's exact text,
+byte-for-byte — asserted in the harness against the captured
+request body. The API's key (scoped, via the fork's create-key.py)
+lives in page memory only, a stricter discipline than the stored
+BYOK keys, chosen because this key can move a real phone. The
+environment boundary is documented from the fork's own source: the
+API allowlists only its local origins, so the supported
+configuration is Reach served on the same Mac; from the public site
+the refusal is the expected path and is narrated as such, with
+Copy/Share still carrying the message. A submitted task is never
+narrated as a delivered message.
+
+### Monetization — a waitlist that works today
+
+MONETIZATION.md states the model (Free BYOK; Pro; Team per seat;
+the PhoneUse execution add-on; prices set at launch — no invented
+figures). The in-app “Reach Pro — join the waitlist” card is
+deliberately primitive: a mailto that composes a real email to the
+team's inbox from the user's own mail app. No form vendor, no
+tracking, nothing collected by the page — a monetization surface
+that is honest because it is functional at hackathon scale.
+
+### What v2.4 deliberately did not change
+
+The rails, the store schema (still v3; `packId` additive), the
+service worker's cache identity, the no-keys behaviour, and every
+v2.3 surface. The extended harness now runs **172 assertions, all
+green** — the 133 of v2.3 plus 39 covering pack isolation against
+the store, the pack first-item flow, suppressed pack members, pack
+persistence across reload, bridge body equality and auth shape,
+bridge refusal, the memory-only key invariant, and the waitlist.

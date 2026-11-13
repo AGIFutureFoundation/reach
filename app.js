@@ -121,7 +121,7 @@ function freshDay() { return { date: dateKey(), touches: 0, kinds: [], mailbox: 
 const DEFAULT_STATS = { suppression: 0, cap: 0 };
 
 function loadStore() {
-  const blank = { version: LS_VERSION, profile: { ...DEFAULT_PROFILE }, people: [], saved: [], day: freshDay(), nudges: [], history: [], integrations: { ...DEFAULT_INTEGRATIONS }, stats: { ...DEFAULT_STATS }, judgeMode: false };
+  const blank = { version: LS_VERSION, profile: { ...DEFAULT_PROFILE }, people: [], saved: [], day: freshDay(), nudges: [], history: [], integrations: { ...DEFAULT_INTEGRATIONS }, stats: { ...DEFAULT_STATS }, judgeMode: false, packId: "" };
   try {
     const raw = window.localStorage.getItem(LS_KEY);
     if (!raw) return blank;
@@ -139,7 +139,8 @@ function loadStore() {
       history: Array.isArray(parsed.history) ? parsed.history : [],
       integrations: { ...DEFAULT_INTEGRATIONS, ...(parsed.integrations || {}) },
       stats: { ...DEFAULT_STATS, ...((parsed.stats && typeof parsed.stats === "object") ? parsed.stats : {}) },
-      judgeMode: !!parsed.judgeMode
+      judgeMode: !!parsed.judgeMode,
+      packId: typeof parsed.packId === "string" ? parsed.packId : ""
     };
     return out;
   } catch (_) {
@@ -171,12 +172,237 @@ store.people.forEach(p => {
 });
 state.saved = store.saved.slice();
 
+/* ---------------- use-case packs (v2.4) ----------------
+   One-tap scenario loaders: a small fictional team for a job Reach
+   does — founder follow-ups, a recruiter pipeline, nonprofit donors,
+   creator collabs. A pack lives in its OWN slot: loading one swaps
+   the visible queue to fresh copies of the pack's people and stashes
+   your real list (queue + waiting approvals) untouched in memory;
+   "My people" restores it exactly. Pack people are never merged
+   into store.people, pack saved-drafts are never persisted, and the
+   only store trace of a pack is `packId` — which list you were
+   viewing. Every pack's first person carries a pre-written draft
+   and a staged research note, so their card runs the full flow:
+   research → draft → approval. All pack people are fictional. */
+
+const PACKS = [
+  {
+    id: "founder", label: "Founder follow-ups",
+    blurb: "Investors and advisors who each asked for something specific — warmth with a paper trail.",
+    people: [
+      {
+        id: "pk-founder-1", name: "Mara Voss", org: "Halcyon Ventures", suppressed: false, move: "follow-up", pack: "founder",
+        fit: "Mara led the seed panel at Frontier Demo Day and asked for the one-page metrics follow-up 'when the cohort numbers settle' — they settled last week, and the page exists.",
+        research: "Halcyon Ventures — a seed-stage fund writing first checks into infrastructure and tools for builders. Its partners ask founders for a one-page metrics follow-up after demo days, and reply within the week when it lands.",
+        draft: "Hi Mara — following up with the one-pager you asked for at Frontier Demo Day. The cohort numbers settled last week: the short version is retention held and the waitlist grew. The page is ready in the format you prefer — happy to walk it in 15 minutes whenever suits.",
+        status: "waiting"
+      },
+      {
+        id: "pk-founder-2", name: "Daniel Reyes", org: "Independent advisor", suppressed: false, move: "thank", pack: "founder",
+        fit: "Daniel spent two hours tearing down your onboarding flow in October; his notes became the current checklist — and he never got a proper thank-you.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "pk-founder-3", name: "Elena Brooks", org: "Northlight Capital", suppressed: false, move: "reply", pack: "founder",
+        fit: "Elena replied to the last update asking what the burn multiple looks like now — a direct question from an investor, waiting on a direct answer.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "pk-founder-4", name: "Tomás Herrera", org: "Build Guild — founder mentor", suppressed: false, move: "reconnect", pack: "founder",
+        fit: "Tomás mentored the first cohort weekend and you have not spoken since spring — exactly the kind of warm connection that quietly goes cold.",
+        draft: "", status: "waiting"
+      }
+    ]
+  },
+  {
+    id: "recruiter", label: "Recruiter pipeline",
+    blurb: "Candidates kept warm between stages — every one of them waiting on something that was promised.",
+    people: [
+      {
+        id: "pk-recruiter-1", name: "Jess Park", org: "Candidate — senior platform engineer", suppressed: false, move: "follow-up", pack: "recruiter",
+        fit: "Jess cleared the technical screen and asked for the team-structure note before her final round — it was promised 'this week', and the week is nearly over.",
+        research: "Jess Park — senior platform engineer, eight years on infrastructure teams. She has told two referrers she chooses roles by team structure and on-call load, in that order — which is why the note she asked for is the one that matters.",
+        draft: "Hi Jess — the team-structure note I promised you is ready: who you'd report to, how the on-call rotation actually runs, and where this role sits in the platform org. Sending it over now so you have it before the final round — shout with anything it doesn't answer.",
+        status: "waiting"
+      },
+      {
+        id: "pk-recruiter-2", name: "Ravi Menon", org: "Candidate — product designer", suppressed: false, move: "reply", pack: "recruiter",
+        fit: "Ravi replied asking whether the role can be remote-first. The answer is in the role spec — he just hasn't been sent it yet.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "pk-recruiter-3", name: "Alina Petrova", org: "Candidate — data engineer", suppressed: false, move: "follow-up", pack: "recruiter",
+        fit: "Alina's portfolio review is done and the panel's notes are all in — she is waiting to hear the outcome either way, and silence is the worst answer.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "pk-recruiter-4", name: "Wren Osei", org: "Candidate — asked to be removed", suppressed: true, pack: "recruiter",
+        suppressReason: "Asked to be removed from all outreach in September 2026. On the do-not-contact list.",
+        fit: "", draft: "", status: "suppressed"
+      }
+    ]
+  },
+  {
+    id: "nonprofit", label: "Nonprofit donors",
+    blurb: "Thank-yous and outcome updates — the messages donors actually remember.",
+    people: [
+      {
+        id: "pk-nonprofit-1", name: "Grace Liu", org: "Friends of Bayview Library — monthly donor", suppressed: false, move: "thank", pack: "nonprofit",
+        fit: "Grace has given monthly for a year, and her last gift note said the reading room 'feels like hers now' — she has never had a proper thank-you.",
+        research: "Friends of Bayview Library — the donor circle behind the reading-room refurbishment. Monthly donors get a short update each quarter; Grace Liu is one of the circle's longest-standing members, and her gifts are earmarked for the reading room.",
+        draft: "Hi Grace — a proper thank-you, a year overdue. Your monthly gifts are earmarked for the reading room, and your last note said it 'feels like yours now' — the regulars have started calling the corner chair Grace's chair. Thought you should know what your steadiness built.",
+        status: "waiting"
+      },
+      {
+        id: "pk-nonprofit-2", name: "Priya Shah", org: "Harborview Credit Union — community sponsor", suppressed: false, move: "follow-up", pack: "nonprofit",
+        fit: "The credit union sponsored the winter coat drive, and Priya is waiting on the outcome numbers her board asked for — coats distributed, sites, the short version.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "pk-nonprofit-3", name: "Marcus Bell", org: "Volunteer & first-time donor", suppressed: false, move: "invite", pack: "nonprofit",
+        fit: "Marcus volunteered at three food distributions, then gave for the first time last month — the donor brunch invite list was made for people exactly like him.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "pk-nonprofit-4", name: "Edith Coleman", org: "Former donor — asked for no contact", suppressed: true, pack: "nonprofit",
+        suppressReason: "Asked for no further contact after the spring appeal (May 2026). On the do-not-contact list.",
+        fit: "", draft: "", status: "suppressed"
+      }
+    ]
+  },
+  {
+    id: "creator", label: "Creator collabs",
+    blurb: "Brands, fellow creators, and hosts — outreach where the relationship is the asset.",
+    people: [
+      {
+        id: "pk-creator-1", name: "Mia Tanaka", org: "Kolo Snacks — brand partnerships", suppressed: false, move: "follow-up", pack: "creator",
+        fit: "Mia asked for the audience numbers for the repair series after the second episode outperformed — the one-pager exists; it just hasn't been sent.",
+        research: "Kolo Snacks — a small snack brand that sponsors two other repair-and-making channels. Its partnership brief asks creators for audience numbers and one past brand moment, nothing more — a short, specific follow-up is the house style.",
+        draft: "Hi Mia — the audience one-pager for the repair series you asked for is ready: episode two's numbers, the retention curve, and the brand moment from the spring integration. Sending it now — if the shape works, the December slot conversation gets much easier.",
+        status: "waiting"
+      },
+      {
+        id: "pk-creator-2", name: "Leo Fischer", org: "Fellow creator — fix-it format, Berlin", suppressed: false, move: "introduce", pack: "creator",
+        fit: "Leo shoots the same fix-it format in Berlin, and you keep promising to introduce him to your editor — both of them have now asked, separately.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "pk-creator-3", name: "Sofia Marino", org: "Host — 'Tools That Outlive Us' podcast", suppressed: false, move: "invite", pack: "creator",
+        fit: "Sofia's show books two months out and she held a slot for you — the hold expires this week, and she has been patient about it.",
+        draft: "", status: "waiting"
+      },
+      {
+        id: "pk-creator-4", name: "Ben Whitaker", org: "Northbeam Studio — channel sponsor", suppressed: false, move: "reply", pack: "creator",
+        fit: "Ben replied on the sponsorship thread asking whether the December slot is still open. It is — and nobody has told him yet.",
+        draft: "", status: "waiting"
+      }
+    ]
+  }
+];
+
+let myQueueStash = null;      /* your real queue, while a pack is loaded */
+let myApprovalsStash = null;  /* your waiting approvals, stashed with it */
+const puSentIds = new Set();  /* approval ids already handed to PhoneUse this session */
+
+function currentPack() {
+  return PACKS.find(p => p.id === store.packId) || null;
+}
+
+/* Your real list, whichever slot is currently on stage. Writes that
+   belong to your people (add-person, import, persistPeople) always
+   land here — never in a pack. */
+function myQueue() {
+  return currentPack() && myQueueStash ? myQueueStash : state.queue;
+}
+
+function renderPackBar() {
+  const wrap = $("#pack-actions");
+  const active = $("#pack-active");
+  if (!wrap || !active) return;
+  const pack = currentPack();
+  wrap.innerHTML = PACKS.map(p =>
+    `<button type="button" class="mini-btn pack-btn${pack && pack.id === p.id ? " pack-on" : ""}" data-pack="${p.id}">${escapeHtml(p.label)}</button>`
+  ).join("") +
+    `<button type="button" class="mini-btn pack-btn${!pack ? " pack-on" : ""}" data-pack="">My people</button>`;
+  $$("[data-pack]", wrap).forEach(b => b.addEventListener("click", () => setActiveList(b.dataset.pack || "")));
+  if (pack) {
+    active.hidden = false;
+    active.textContent = `${pack.label} — ${pack.blurb} Fictional demo people in their own slot; your own list is untouched. First up: ${pack.people[0].name} — tap “Draft” on their card and Reach runs the full flow: research → draft → your approval.`;
+  } else {
+    active.hidden = true;
+    active.textContent = "";
+  }
+}
+
+/* Swap the visible list. Leaving a pack drops its session state
+   (waiting approvals, saved drafts) with it and restores yours from
+   the stash, exactly as it was left. */
+function setActiveList(id) {
+  const target = PACKS.find(p => p.id === id) || null;
+  const current = currentPack();
+  if (!target && !current) return;
+  if (target && current && target.id === current.id) return;
+  if (current) {
+    const waitingAside = state.approvals.length;
+    const savedAside = state.saved.filter(s => s.pack).length;
+    state.saved = state.saved.filter(s => !s.pack);
+    persistSaved();
+    state.queue = myQueueStash || state.queue;
+    state.approvals = myApprovalsStash || [];
+    myQueueStash = null;
+    myApprovalsStash = null;
+    if (waitingAside || savedAside) {
+      narrate(`Setting the ${current.label} pack aside — its ${waitingAside} waiting draft${waitingAside === 1 ? "" : "s"}${savedAside ? ` and ${savedAside} saved draft${savedAside === 1 ? "" : "s"}` : ""} stay with the pack, not with your list.`);
+    }
+  }
+  store.packId = target ? target.id : "";
+  persist();
+  if (target) {
+    myQueueStash = state.queue;
+    myApprovalsStash = state.approvals;
+    state.queue = target.people.map(p => ({ ...p }));
+    state.approvals = [];
+    renderPackBar();
+    renderQueue();
+    populateStudioPeople();
+    renderApprovals();
+    renderToday();
+    switchView("queue");
+    narrate(`Loaded the ${target.label} pack — ${target.people.length} fictional people for this job, fresh every time you load it. Your own list is untouched in its own slot. First up: ${target.people[0].name} — tap “Draft” on their card for the full flow: research → draft → approval.`, "log-done");
+  } else {
+    renderPackBar();
+    renderQueue();
+    populateStudioPeople();
+    renderApprovals();
+    renderToday();
+    switchView("queue");
+    narrate(`Back to your people — your list exactly as you left it${state.approvals.length ? `, with ${state.approvals.length} draft${state.approvals.length === 1 ? "" : "s"} still waiting` : ""}.`, "log-done");
+  }
+}
+
+/* If a pack was the last list viewed, reopen on it — its people are
+   deterministic, so the slot rebuilds fresh; your list is stashed
+   exactly as init built it. */
+if (store.packId) {
+  const reopening = currentPack();
+  if (reopening) {
+    myQueueStash = state.queue;
+    myApprovalsStash = state.approvals;
+    state.queue = reopening.people.map(p => ({ ...p }));
+    state.approvals = [];
+  } else {
+    store.packId = "";
+  }
+}
+
 function persistPeople() {
-  store.people = state.queue.filter(q => q.user);
+  store.people = myQueue().filter(q => q.user);
   persist();
 }
 function persistSaved() {
-  store.saved = state.saved.slice();
+  /* Pack saved-drafts are session-only: they render while their
+     pack is loaded and are never written to the store. */
+  store.saved = state.saved.filter(s => !s.pack);
   persist();
 }
 
@@ -224,6 +450,7 @@ function recordSend(cold) {
    where this person came from, on the queue card and the approval. */
 function provenanceOf(q) {
   if (!q) return "";
+  if (q.pack) return "Use-case pack · fictional demo people";
   if (q.user) return q.imported ? "Source: imported by you · context on record" : "Source: added by you · context on record";
   return "Seed demo data";
 }
@@ -804,6 +1031,8 @@ function draftKindLabel(a) {
 function renderApprovals() {
   const wrap = $("#approval-list");
   $("#approvals-empty").hidden = state.approvals.length > 0 || state.saved.length > 0;
+  const igPU = window.ReachIntegrations;
+  const puOn = !!(igPU && igPU.phoneuseConnected && igPU.phoneuseConnected());
   wrap.innerHTML = state.approvals.map(a => `
     <article class="approval-card" data-approval="${a.id}" tabindex="0">
       <p class="approval-kind">${escapeHtml(draftKindLabel(a))} · waiting for your decision</p>
@@ -822,7 +1051,13 @@ function renderApprovals() {
         <button type="button" class="mini-btn" data-save="${a.id}">Save for later</button>
       </div>
       <p class="bridge-note">Copy or Share takes this exact text into a real app on your phone — the honest bridge until connectors land.</p>
+      ${puOn ? `
+      <div class="approval-actions approval-actions-secondary bridge-row">
+        <button type="button" class="mini-btn" data-phoneuse="${a.id}" ${puSentIds.has(a.id) ? "disabled" : ""}>${puSentIds.has(a.id) ? "Sent to PhoneUse ✓" : "Send to my phone via PhoneUse"}</button>
+      </div>
+      <p class="bridge-note">PhoneUse is detected on your Mac. This hands the exact text above to PhoneUse as a task — your tap here is the approval for this path, and the text crosses byte-for-byte, nothing added, nothing paraphrased.</p>` : ""}
     </article>`).join("");
+  $$("[data-phoneuse]", wrap).forEach(b => b.addEventListener("click", () => sendViaPhoneuse(b.dataset.phoneuse)));
   $$("[data-approve]", wrap).forEach(b => b.addEventListener("click", () => approveApproval(b.dataset.approve)));
   $$("[data-skip]", wrap).forEach(b => b.addEventListener("click", () => skipApproval(b.dataset.skip)));
   $$("[data-copy]", wrap).forEach(b => b.addEventListener("click", () => copyApproval(b.dataset.copy)));
@@ -939,13 +1174,49 @@ async function shareApproval(id) {
   if (ok) offerNudge(nudgeInfoFor(a));
 }
 
+/* The PhoneUse bridge: hand an approval card's exact text to the
+   PhoneUse local API as a task (POST /api/ai/tasks). The tap on this
+   button is the human decision for this delivery path — the same
+   standing Copy and Share have — and the payload is the card's
+   current text, byte-for-byte: no template, no additions. A
+   submitted task is not a delivered message, and the narration
+   says so; every failure is narrated and Copy/Share remain. */
+async function sendViaPhoneuse(id) {
+  const a = state.approvals.find(x => x.id === id);
+  if (!a) return;
+  const ig = window.ReachIntegrations;
+  if (!ig || !ig.phoneuseConnected || !ig.phoneuseConnected()) {
+    narrate("PhoneUse isn't detected right now — run “Detect PhoneUse” in the sponsor-stack panel while it runs on your Mac. Copy and Share still carry this draft.", "log-refusal");
+    return;
+  }
+  if (!ig.phoneuseBridgeReady || !ig.phoneuseBridgeReady()) {
+    narrate("PhoneUse is detected, but the bridge needs two things from its panel row: a scoped API key (PhoneUse's create-key.py) and the device ID from the PhoneUse app. Both are kept in this page's memory only — never stored — so a reload asks again. Add them, then tap once more.", "log-refusal");
+    return;
+  }
+  if (puSentIds.has(a.id)) return;
+  const text = approvalCurrentText(a);
+  narrate(`Handing the exact text for ${a.toName} to PhoneUse on your Mac — byte-for-byte, as it stands in the card…`);
+  const res = await ig.phoneuseSendTask(text);
+  if (res && res.ok) {
+    puSentIds.add(a.id);
+    renderApprovals();
+    recordTouch("phoneuse", a.toName);
+    traceEvent("phoneuse_task", { to: firstName(a.toName) });
+    narrate(`PhoneUse accepted it${res.id ? ` — task ${res.id}` : ""} is queued on your Mac. That is a submitted task, not a delivered message: read the phone's screen before calling it sent. The card stays here, and Copy is still yours.`, "log-done");
+    offerNudge(nudgeInfoFor(a));
+  } else {
+    narrate(`PhoneUse didn't take it — ${res && res.detail ? res.detail : "the local API didn't answer"}. From the public site that refusal is expected: the API only accepts its own local origins, so the supported bridge setup is Reach served on the same Mac (INTEGRATIONS.md has the detail). Nothing was sent anywhere, and Copy/Share still carries the draft.`, "log-refusal");
+  }
+}
+
 function saveApproval(id) {
   const idx = state.approvals.findIndex(a => a.id === id);
   if (idx === -1) return;
   const a = state.approvals[idx];
   a.text = approvalCurrentText(a);
   state.approvals.splice(idx, 1);
-  state.saved.push({ id: a.id, kind: a.kind, refId: a.refId, toName: a.toName, org: a.org, text: a.text, move: a.move || "", prov: a.prov || "" });
+  const packNow = currentPack();
+  state.saved.push({ id: a.id, kind: a.kind, refId: a.refId, toName: a.toName, org: a.org, text: a.text, move: a.move || "", prov: a.prov || "", pack: packNow && state.queue.some(q => q.id === a.refId) ? packNow.id : "" });
   if (a.kind !== "reply") {
     const q = state.queue.find(x => x.id === a.refId);
     if (q && q.status === "drafted") { q.status = "saved"; renderQueue(); }
@@ -1181,6 +1452,7 @@ async function flowQueue() {
         continue;
       }
       await agentTouch(card, `Reading the fit note for ${q.name} at ${q.org}: ${q.fit}`);
+      if (q.research) narrate(`Research on record for ${q.org}: ${q.research} — a staged profile note from the pack, labelled as such.`);
       narrate(`Drafting a personalised message for ${q.name}…`);
       await wait(900);
       q.status = "drafted";
@@ -1256,6 +1528,28 @@ async function flowDraftOne(id) {
       return;
     }
     await agentTouch(card, `Reading what's on record for ${q.name} at ${q.org}: ${q.fit}`);
+    /* The research beat: pack leads carry a staged research note,
+       so their flow is research → draft → approval, the same shape
+       as the reply flow. With Tavily connected the step runs live
+       and is labelled live; anything else is labelled staged. */
+    {
+      const igR = window.ReachIntegrations;
+      let liveR = null;
+      if (igR && igR.tavilyConnected()) {
+        narrate(`Before drafting, I'll look up ${q.org} — Tavily is connected in the sponsor stack, so this research step runs live.`);
+        liveR = await igR.tavilySearch(`${q.org} — ${q.name}`);
+      }
+      if (liveR) {
+        narrate(`Live research via Tavily: “${liveR.title}” (${liveR.url}). Labelled live, with its source — the way the reply flow does it.`);
+        traceEvent("research_live", { org: q.org, source: liveR.url });
+      } else if (q.research) {
+        if (igR && igR.tavilyConnected()) {
+          narrate("The live Tavily lookup didn't come back, so I'm using the staged research note — labelled as staged, never passed off as live.", "log-refusal");
+          traceEvent("research_fallback", { org: q.org });
+        }
+        narrate(`Research: ${q.research} — a staged profile note from the pack, labelled as such. Connect Tavily in the sponsor stack and this step runs live.`);
+      }
+    }
     narrate(`Drafting a ${MOVE_LABELS[q.move] || "follow-up"} in your ${store.profile.tone || "Warm"} tone…`);
     await wait(900);
     q.status = "drafted";
@@ -1627,13 +1921,15 @@ $("#person-form").addEventListener("submit", e => {
     suppressReason: dnc ? "You marked this person do-not-contact." : "",
     draft: "", status: dnc ? "suppressed" : "waiting", user: true
   };
-  state.queue.push(person);
+  const packOn = !!currentPack();
+  myQueue().push(person);
   persistPeople();
   renderQueue();
   populateStudioPeople();
   e.target.reset();
   switchView("queue");
-  if (dnc) narrate(`${name} is on your do-not-contact list. I'll never draft for them, and I'll say so if they ever come up.`, "log-refusal");
+  if (dnc) narrate(`${name} is on your do-not-contact list${packOn ? " — in your own list, under the pack you're viewing" : ""}. I'll never draft for them, and I'll say so if they ever come up.`, "log-refusal");
+  else if (packOn) narrate(`${name} is in your own queue, saved on this phone — you're viewing a pack right now, so they'll be there when you switch back to “My people”.`, "log-done");
   else narrate(`${name} is in your queue, saved on this phone. Tap “Draft” on their card, or let the Next best action find them.`, "log-done");
 });
 
@@ -1650,7 +1946,7 @@ let importRows = [];
 
 function parseImport(text) {
   const rows = [];
-  const seen = new Set(state.queue.map(q => q.name.trim().toLowerCase()));
+  const seen = new Set(myQueue().map(q => q.name.trim().toLowerCase()));
   String(text || "").split(/\r?\n/).forEach(raw => {
     let line = raw.trim();
     if (!line) return;
@@ -1703,8 +1999,9 @@ $("#import-form").addEventListener("submit", e => {
   e.preventDefault();
   const chosen = importRows.filter(r => r.include && !r.dupe);
   if (!chosen.length) { narrate("No new people selected — duplicates are always skipped, and unchecked rows stay out."); return; }
+  const importTarget = myQueue();
   chosen.forEach((r, i) => {
-    state.queue.push({
+    importTarget.push({
       id: "u-" + Date.now().toString(36) + "-" + i,
       name: r.name, org: r.org || "—", fit: r.note || "", move: "follow-up",
       suppressed: !!r.dnc,
@@ -1719,7 +2016,7 @@ $("#import-form").addEventListener("submit", e => {
   renderImportPreview();
   $("#import-text").value = "";
   switchView("queue");
-  narrate(`Imported ${chosen.length} ${chosen.length === 1 ? "person" : "people"} into your queue — parsed and stored on this phone only. Reach drafts where a note gives it context, and never for anyone marked do-not-contact.`, "log-done");
+  narrate(`Imported ${chosen.length} ${chosen.length === 1 ? "person" : "people"} into your queue — parsed and stored on this phone only.${currentPack() ? " You're viewing a pack, so they join your own list, ready when you switch back." : ""} Reach drafts where a note gives it context, and never for anyone marked do-not-contact.`, "log-done");
 });
 
 /* ---------------- Draft studio ---------------- */
@@ -1816,6 +2113,7 @@ $("#reset-demo-btn").addEventListener("click", () => {
   store.day = freshDay();
   store.history = [];
   store.stats = { ...DEFAULT_STATS };
+  store.packId = "";
   persist();
   narrate("Demo reset — your added people, saved drafts, and today's touches are cleared; your profile stays. Reloading the seeds…", "log-done");
   setTimeout(() => window.location.reload(), 900);
@@ -1832,6 +2130,7 @@ $("#erase-btn").addEventListener("click", () => {
 /* ---------------- init ---------------- */
 
 renderThreads();
+renderPackBar();
 renderQueue();
 renderApprovals();
 updateBadges();

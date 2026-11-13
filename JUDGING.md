@@ -75,6 +75,45 @@ Three additions, all from real state, all reversible:
   numbers as a shareable card — “Never let a warm connection go
   cold” — drawn on-device, no external images, no tracking.
 
+## v2.4 — the winner expansion (new today)
+
+Three more additions, each aimed at a question judges actually ask:
+
+- **Use-case packs** — *“Fine, but who is it for?”* The Outreach view
+  carries one-tap scenario loaders: **Founder follow-ups** (investors
+  + advisors), **Recruiter pipeline** (candidates kept warm),
+  **Nonprofit donors** (thank-yous + updates), **Creator collabs**
+  (brand/partner outreach). Each pack loads its own small fictional
+  team, narrates what it loaded, and its first person runs the
+  complete flow — **research → draft → approval**. Packs live in their
+  own slot: loading one stashes your real list untouched, pack saved
+  drafts are never persisted, and “My people” restores everything
+  exactly. The isolation is not a claim — the harness proves it
+  against the store (23 pack assertions). The recruiter and nonprofit
+  packs each include a do-not-contact person, so the refusal demos
+  inside a real use case, not just the seed data.
+- **The PhoneUse bridge** — *“But does it ever touch a real phone?”*
+  v2.3 detected the sponsor's PhoneUse stack; v2.4 hands off to it.
+  While PhoneUse is detected, every approval card offers **“Send to
+  my phone via PhoneUse”**: the card's exact text is POSTed to the
+  local API's documented task endpoint (`POST /api/ai/tasks`) as the
+  task payload — byte-for-byte, which the harness asserts against
+  the captured request body. The bridge key is a scoped PhoneUse key
+  kept in page memory only, never stored. The environment truth is
+  stated in the app and in INTEGRATIONS.md: the API allowlists only
+  its local origins, so the supported configuration is Reach served
+  on the same Mac (the booth setup) — from the public site the
+  refusal is narrated and Copy/Share carries the message. A submitted
+  task is narrated as submitted, never as delivered.
+- **Reach Pro, for real** — *“How does this make money?”* A
+  **“Reach Pro — join the waitlist”** card in the panel composes a
+  prefilled email to the team's own inbox via the judge's own mail
+  app — functional today, no form vendor, no tracking. The full
+  model is **MONETIZATION.md**: Free BYOK, Pro for individuals, Team
+  per seat (shared suppression, audit trail, caps per seat), and the
+  PhoneUse execution add-on — prices set at launch, no invented
+  figures.
+
 ## Sponsor stack — live (v2.2, new today)
 
 The three sponsor tools are not logos in this build — they are wired
@@ -170,6 +209,9 @@ enhancement, not a dependency.
 - **Verified numbers only** — summaries count what actually happened.
 
 ## Path to revenue
+
+*The full model — tiers, pricing posture, channels — is in
+[MONETIZATION.md](MONETIZATION.md). The short version:*
 
 The model, stated plainly — no invented figures, no traction claims:
 

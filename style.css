@@ -616,3 +616,25 @@ body.judge-on .next-action-label { font-size: 1.45rem; }
 .captured-snippet { margin: 0 0 .15rem; font-size: .92rem; }
 .captured-url { margin: 0; font-size: .8rem; color: var(--ds-text-700); overflow-wrap: anywhere; }
 .captured-note { margin: .6rem 0 0; font-size: .85rem; color: var(--ds-text-700); }
+
+/* ---------------- v2.4: packs, bridge, Pro ---------------- */
+
+.pack-bar {
+  border: 1.5px solid var(--ds-line-light); border-radius: var(--ds-radius-md);
+  background: var(--ds-paper-100); padding: .8rem .9rem; margin-bottom: 1rem;
+}
+.pack-title { margin: 0 0 .3rem; font-size: 1rem; }
+.pack-actions { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .55rem; }
+.pack-btn.pack-on {
+  background: var(--ds-ink-900); color: var(--ds-paper-50); border-color: var(--ds-ink-900);
+}
+.pack-active { margin: .6rem 0 0; font-size: .9rem; line-height: 1.5; }
+
+.bridge-row { margin-top: .35rem; }
+
+.pro-card {
+  border: 2px solid var(--ds-gold-500); border-radius: var(--ds-radius-lg);
+  background: #fff; padding: 1rem 1.1rem 1.1rem; margin-top: 1.2rem;
+}
+.pro-card h3 { margin-top: 0; }
+.pro-btn { display: inline-block; text-decoration: none; margin-top: .4rem; }

@@ -137,6 +137,16 @@
           <p class="view-intro">People worth a message — each with the real reason
             they were chosen. Reach drafts only where a reason exists, and never
             drafts to anyone who asked not to be contacted.</p>
+          <div class="pack-bar" id="pack-bar">
+            <h3 class="pack-title">Use-case packs</h3>
+            <p class="form-note">One tap loads a small fictional team for a job
+              Reach does — try the product the way a founder, a recruiter, a
+              nonprofit, or a creator would. Packs live in their own slot:
+              <strong>your own people are never touched</strong>, and switching
+              back restores your list exactly as you left it.</p>
+            <div class="pack-actions" id="pack-actions"></div>
+            <p class="pack-active" id="pack-active" hidden></p>
+          </div>
           <ul class="queue-list" id="queue-list"></ul>
           <form class="person-form" id="person-form">
             <h3>Add someone to your queue</h3>
@@ -430,20 +440,57 @@
           live video, OCR screen reading, tap, type, scroll, behind a local
           API. It is Reach's iOS answer: an approval card you tap here
           becomes a PhoneUse task on your own Mac and phone — and nothing
-          reaches PhoneUse that Reach didn't get a tap for. <strong>No key
-          exists for this row</strong> — the test below simply asks the
-          local service whether it's there. From a public HTTPS page like
-          this one, browsers usually block that call, so “not detected” is
-          the normal result here, not an error; run PhoneUse on the Mac
-          beside you and the check is there for the environments that
-          allow it. Our fork:
+          reaches PhoneUse that Reach didn't get a tap for.
+          <strong>Detection needs no key</strong> — the test below simply
+          asks the local service whether it's there. The <strong>bridge</strong>
+          (the “Send to my phone via PhoneUse” button that appears on approval
+          cards while PhoneUse is detected) submits the card's exact text to
+          the API's task endpoint, which does ask for a key: use a
+          <strong>scoped key</strong> from PhoneUse's <code>create-key.py</code>
+          plus the device ID from the PhoneUse app. Both are kept in
+          <strong>this page's memory only</strong> — never stored, gone on
+          reload. From a public HTTPS page like this one, browsers usually
+          block local calls and the API itself accepts only its own local
+          origins, so a refusal here is the normal result, not an error; the
+          supported bridge setup is Reach served on the same Mac — the detail
+          is in INTEGRATIONS.md. Our fork:
           <strong>github.com/AGIFutureFoundation/phoneuse</strong>.</p>
         <div class="integration-actions">
           <button type="button" class="mini-btn" id="connect-phoneuse">Detect PhoneUse</button>
           <button type="button" class="mini-btn" id="disconnect-phoneuse">Forget detection</button>
         </div>
         <p class="integration-msg" id="msg-phoneuse" role="status"></p>
+        <label for="key-phoneuse">PhoneUse scoped key (bridge — session only, never stored)</label>
+        <input id="key-phoneuse" type="password" autocomplete="off" placeholder="Scoped key from create-key.py">
+        <label for="device-phoneuse">PhoneUse device ID</label>
+        <input id="device-phoneuse" type="text" autocomplete="off" placeholder="Device ID (UDID) from the PhoneUse app">
+        <div class="integration-actions">
+          <button type="button" class="mini-btn" id="save-phoneuse-session">Keep for this session</button>
+          <button type="button" class="mini-btn" id="clear-phoneuse-session">Forget session</button>
+        </div>
+        <p class="integration-msg" id="msg-phoneuse-bridge" role="status"></p>
       </div>
+    </section>
+
+    <section class="pro-card" aria-labelledby="pro-heading">
+      <h3 id="pro-heading">Reach Pro — join the waitlist</h3>
+      <p class="hint">Reach is free today, with your own keys — the rails
+        (approval, suppression, caps, provenance) are not a paid feature,
+        because a tool that only behaves safely on the paid tier is not a
+        safe tool. <strong>Pro</strong> adds the Morning Brief, the full
+        pack library, and voice-first operation; <strong>Team</strong> adds
+        shared suppression lists, the LangSmith audit trail as a team
+        artifact, and caps per seat; the <strong>PhoneUse execution
+        add-on</strong> pairs the approval console with the native layer.
+        Prices are <strong>set at launch</strong> and published in the
+        repo's MONETIZATION.md first — there is no price to invent today.
+        Joining the waitlist is one email, composed by your own mail app:
+        no form vendor, no tracking pixel, nothing collected by this page.</p>
+      <a class="run-btn pro-btn" id="waitlist-link"
+         href="mailto:x@agifuturefoundation.org?subject=Reach%20Pro%20waitlist&body=Hi%20%E2%80%94%20please%20add%20me%20to%20the%20Reach%20Pro%20waitlist.%0D%0A%0D%0AWhat%20I%27d%20use%20Reach%20for%3A%20%0D%0AThe%20tier%20I%27m%20watching%20(Pro%20%2F%20Team%20%2F%20PhoneUse%20add-on)%3A%20">Join the waitlist</a>
+      <p class="hint">The link opens your mail app with the message composed —
+        edit it, or don't send it. It goes to the Reach team's own inbox
+        (x@agifuturefoundation.org), from your address, by your tap.</p>
     </section>
 
     <div class="nudge-offer" id="nudge-offer" hidden></div>
@@ -455,7 +502,10 @@
 
 <footer class="site-foot">
   <p><strong>Honesty note.</strong> The seeded people and organisations on the stage are
-    fictional, and nothing here sends anywhere real. Anything <em>you</em> add — profile,
+    fictional, and nothing here sends anywhere real. The use-case packs are fictional
+    teams in their own slot — loading one never touches your own list. The PhoneUse
+    bridge, where a browser and the local API allow it, submits a task to software on
+    your own Mac; a submitted task is not a delivered message, and the app says so. Anything <em>you</em> add — profile,
     people, saved drafts — is stored only in this browser, on this device; export or
     erase it any time from “Make Reach yours”. Copy and Share on a draft move text
     <em>you</em> choose into your own apps; Reach itself sends nothing. If you connect

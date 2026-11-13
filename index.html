@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reach — an accessibility-first phone agent for outreach</title>
+<meta name="description" content="Reach reads the screen, taps, types, and replies — outreach that runs entirely from a phone, with a human approving every send. A working demo with fictional data.">
+<meta name="theme-color" content="#0b1e3a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip-link" href="#agent-panel">Skip to agent controls</a>
+
+<header class="site-head">
+  <div class="head-inner">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <rect x="2" y="2" width="44" height="44" rx="12" fill="#0b1e3a"/>
+        <circle cx="17" cy="31" r="4" fill="#e8c85a"/>
+        <path d="M14 22a12 12 0 0 1 12 0" fill="none" stroke="#e8c85a" stroke-width="3.4" stroke-linecap="round"/>
+        <path d="M10.5 15.5a19 19 0 0 1 19 0" fill="none" stroke="#e8c85a" stroke-width="3.4" stroke-linecap="round" opacity=".65"/>
+      </svg>
+      <div>
+        <p class="brand-name">Reach</p>
+        <p class="brand-sub">The phone agent that reads, taps, types &amp; replies</p>
+      </div>
+    </div>
+    <span class="chip chip-demo">Demo — fictional data</span>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ======================= PHONE STAGE ======================= -->
+  <section class="stage-wrap" aria-labelledby="stage-heading">
+    <h1 id="stage-heading" class="stage-heading">Outreach, run entirely from a phone</h1>
+    <p class="stage-lede">Tell Reach what to do — by voice or by typing. It reads the
+      screen on the phone below, taps through the apps, types the drafts, and waits for
+      <strong>your</strong> approval before anything sends.</p>
+
+    <div class="phone" id="phone">
+      <div class="phone-statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="statusbar-centre">Reach stage</span>
+        <span>5G&nbsp;&nbsp;▮▮▮▯</span>
+      </div>
+
+      <div class="stage-head">
+        <h2 id="stage-app-title">Messages</h2>
+        <p class="stage-note">Staged apps · real elements the agent reads &amp; taps</p>
+      </div>
+
+      <div class="stage-screen" id="stage-screen">
+        <section id="view-messages" class="view" aria-label="Messages — thread list">
+          <ul class="thread-list" id="thread-list"></ul>
+        </section>
+
+        <section id="view-thread" class="view" aria-label="Conversation" hidden>
+          <button type="button" class="back-btn" id="thread-back">‹ All messages</button>
+          <h3 class="thread-title" id="thread-title"></h3>
+          <div class="bubble-stream" id="bubble-stream"></div>
+          <form class="composer" id="composer-form">
+            <label class="visually-hidden" for="composer-input">Message text</label>
+            <textarea id="composer-input" rows="2" placeholder="Message…"></textarea>
+            <button type="submit" class="send-btn" id="composer-send">Send</button>
+          </form>
+        </section>
+
+        <section id="view-queue" class="view" aria-label="Outreach queue" hidden>
+          <p class="view-intro">People the programme plans to contact — each with the
+            real reason they were chosen. Reach drafts only where a reason exists,
+            and never drafts to anyone who asked not to be contacted.</p>
+          <ul class="queue-list" id="queue-list"></ul>
+        </section>
+
+        <section id="view-approvals" class="view" aria-label="Approvals" hidden>
+          <p class="view-intro">Nothing sends without you. Read the exact draft,
+            edit it if you like, then approve — or skip it.</p>
+          <div id="approval-list"></div>
+          <p class="empty-note" id="approvals-empty">No drafts waiting. Ask Reach to
+            reply to a message or work the outreach queue.</p>
+        </section>
+      </div>
+
+      <nav class="tabbar" aria-label="Staged apps">
+        <button type="button" class="tab" id="tab-messages" data-view="messages" aria-pressed="true">
+          Messages <span class="badge" id="badge-messages" hidden></span>
+        </button>
+        <button type="button" class="tab" id="tab-queue" data-view="queue" aria-pressed="false">
+          Outreach
+        </button>
+        <button type="button" class="tab" id="tab-approvals" data-view="approvals" aria-pressed="false">
+          Approvals <span class="badge" id="badge-approvals" hidden></span>
+        </button>
+      </nav>
+    </div>
+
+    <p class="stage-caption">The phone above is a simulation — three small apps built as
+      ordinary web elements. Reach perceives them the way a screen reader does: by
+      reading the elements and their text, not by looking at pixels. Its taps and
+      typing are real operations on those apps.</p>
+  </section>
+
+  <!-- ======================= AGENT PANEL ======================= -->
+  <section class="agent-panel" id="agent-panel" aria-labelledby="panel-heading">
+    <h2 id="panel-heading">Talk to Reach</h2>
+
+    <div class="flows" role="group" aria-label="Try a demo flow">
+      <button type="button" class="flow-btn" data-flow="reply">
+        <span class="flow-title">Reply to first unread message</span>
+        <span class="flow-sub">Reach reads it, drafts, you approve</span>
+      </button>
+      <button type="button" class="flow-btn" data-flow="queue">
+        <span class="flow-title">Work the outreach queue</span>
+        <span class="flow-sub">Drafts for the right people — refusals for the rest</span>
+      </button>
+      <button type="button" class="flow-btn" data-flow="summarize">
+        <span class="flow-title">Summarize what you see</span>
+        <span class="flow-sub">A spoken-style rundown of the whole stage</span>
+      </button>
+    </div>
+
+    <form id="command-form" class="command-form">
+      <label for="command-input">…or tell Reach what to do</label>
+      <div class="command-row">
+        <input id="command-input" type="text" autocomplete="off"
+               placeholder="Try: “work the queue”, “approve”, “summarize”">
+        <button type="button" id="mic-btn" class="mic-btn" aria-label="Speak a command">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 1 0-7 0v5A3.5 3.5 0 0 0 12 15Z" fill="currentColor"/><path d="M18.6 11.1a1 1 0 0 0-2 .4 4.6 4.6 0 1 1-9.2 0 1 1 0 0 0-2-.4 6.6 6.6 0 0 0 5.6 6.5V19H8.4a1 1 0 1 0 0 2h7.2a1 1 0 1 0 0-2H13v-1.4a6.6 6.6 0 0 0 5.6-6.5Z" fill="currentColor"/></svg>
+        </button>
+        <button type="submit" class="run-btn">Run</button>
+      </div>
+      <p class="hint" id="mic-note"></p>
+    </form>
+
+    <div class="switch-row">
+      <label class="switch">
+        <input type="checkbox" id="speak-toggle">
+        <span>Speak the narration aloud</span>
+      </label>
+      <p class="hint">Every step below is also announced to screen readers.</p>
+    </div>
+
+    <h3 class="log-heading">What Reach is doing</h3>
+    <ol class="action-log" id="action-log" role="log" aria-live="polite" aria-label="Reach action log"></ol>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <p><strong>Honesty note.</strong> Every person and organisation on the stage is
+    fictional, and nothing here sends anywhere real. The web demo reads and drives
+    its own staged apps; reading <em>other</em> apps needs the Android accessibility
+    layer on the roadmap, and iOS gets an approval console instead — the design
+    document in the repository says exactly where each claim stops.</p>
+  <p class="foot-meta">Reach · an AGI Future Foundation hackathon build · Draft-first,
+    human-approved, suppression-respecting — the rails are the product.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

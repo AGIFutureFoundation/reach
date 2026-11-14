@@ -59,7 +59,8 @@ Everything below is enforced as behaviour, tested, not promised:
   impact panel count the active desk's own work. (Assignments
   approved by Mike, 2026-11-13: Phone 1 Fellowship, Phone 2
   Foundation, Phone 3 BuilderSpace, Phone 4 demo/booth, Phone 5
-  reserve — recorded in the app config.) The operating design is
+  Interview & Monitoring (Mike's 13:33 PT amendment — activated,
+  not a reserve) — recorded in the app config.) The operating design is
   [PHONE-FLEET.md](PHONE-FLEET.md).
 - **Draft studio, Listen mode, paste-import** — drafts only from
   what's on record; your list parsed on-device, uploaded nowhere.
@@ -107,6 +108,7 @@ request shapes, what the docs do and don't settle — is in
 5. Next layers, labelled as roadmap: Android native on the
    OpenPhoneUse pattern (one AccessibilityService, approval gate
    interposed); iOS via the PhoneUse execution layer above.
+   The native step is specified in [ROADMAP.md](ROADMAP.md).
 
 ## Tests
 

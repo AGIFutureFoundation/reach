@@ -1,5 +1,5 @@
 "use strict";
-/* Reach v2.1 — accessibility-first phone agent (demo).
+/* Reach v2.5 — accessibility-first phone agent (demo).
    v2 promise: never let a warm connection go cold. Every person and
    organisation in the seeded data below is fictional. The agent reads
    the stage's real DOM, acts on real elements, and never sends anything
@@ -425,22 +425,27 @@ function currentHolding() {
 /* The fleet's PhoneUse configuration. The LOCAL surface is verified
    from the fork (AGIFutureFoundation/phoneuse): API base, task
    endpoint, Bearer auth, origins allowlisted to its own web UI.
-   The HOSTED console reality (Mike, 2026-11-13): ONE console
-   account — agent@agifellowship.church — holding FIVE devices
-   (all Pixel 7 Pro US, paid until 13 Dec 2026; inventory verified
-   from the vendor's setup emails). The holding → device assignment
-   below is APPROVED by Mike (2026-11-13 11:51 PT): Phone 1 =
-   Fellowship, Phone 2 = Foundation, Phone 3 = BuilderSpace,
-   Phone 4 = Reach demo/booth (it serves Judge Mode), Phone 5 =
-   reserve. The console's API surface remains UNVERIFIED, so
-   consoleApiBase stays empty — the device IDs are recorded facts,
-   not an endpoint claim. */
+   The HOSTED console reality (reconciled 2026-11-13): ONE console
+   account — x@agifuturefoundation.org (org "x's organization",
+   Admin) — holding FIVE devices (all Pixel 7 Pro US, paid until
+   13 Dec 2026; inventory verified from the vendor's setup emails
+   and a live console read 14:34–14:35 PT). There is no
+   agent@agifellowship.church console account; an earlier label
+   saying so was stale and is corrected here. The holding → device
+   assignment below is APPROVED by Mike (2026-11-13 11:51 PT):
+   Phone 1 = Fellowship, Phone 2 = Foundation, Phone 3 =
+   BuilderSpace, Phone 4 = Reach demo/booth (it serves Judge
+   Mode), Phone 5 = Interview & Monitoring desk (Mike's 13:33 PT
+   amendment — activated, not a reserve; all five phones had a
+   Succeeded console run by 15:39 PT). The console's API surface
+   remains UNVERIFIED, so consoleApiBase stays empty — the device
+   IDs are recorded facts, not an endpoint claim. */
 const FLEET_CONFIG = {
   phoneuse: {
     localBase: "http://127.0.0.1:8765",
     localTasksPath: "/api/ai/tasks",
     consoleBase: "https://console.phoneuse.com",
-    consoleAccount: "agent@agifellowship.church",
+    consoleAccount: "x@agifuturefoundation.org",
     consoleDeviceCount: 5,
     consoleApiBase: "", /* UNVERIFIED — intentionally unset */
     consoleDevices: {
@@ -448,7 +453,7 @@ const FLEET_CONFIG = {
       foundation: "ACP6BD9Q64XX8XE9",   /* Phone 2 — approved assignment */
       builderspace: "ACP6B99O2IWFKAA4", /* Phone 3 — approved assignment */
       demo: "ATP68K8IGMSLAIBB",         /* Phone 4 — Reach demo / booth */
-      reserve: "ACP6BD9PTE0T2ASG"       /* Phone 5 — reserve, unassigned */
+      interview: "ACP6BD9PTE0T2ASG"     /* Phone 5 — Interview & Monitoring desk */
     }
   }
 };
